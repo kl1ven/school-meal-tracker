@@ -1,0 +1,285 @@
+.user-manager {
+  padding: 20px;
+}
+
+.user-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+.user-manager-header h2 {
+  margin: 0;
+  color: var(--primary-dark);
+}
+
+.add-user-button {
+  background: var(--accent-green);
+  color: var(--text-light);
+}
+
+.add-user-button:hover {
+  background: #2f8d3b;
+}
+
+.message {
+  background: rgba(95, 125, 145, 0.08);
+  color: var(--primary-dark);
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(95, 125, 145, 0.16);
+}
+
+.users-table-container {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  border: 1px solid rgba(171, 63, 160, 0.14);
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-table th,
+.users-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(171, 63, 160, 0.12);
+}
+
+.users-table th {
+  color: var(--text-light);
+  font-weight: 700;
+}
+
+.users-table tbody tr:nth-child(even) {
+  background: #faf5ff;
+}
+
+.users-table tbody tr:hover {
+  background: rgba(171, 63, 160, 0.08);
+}
+
+.users-table button {
+  background: var(--primary-dark);
+  color: var(--text-light);
+  padding: 6px 12px;
+  border-radius: 10px;
+  margin-right: 0;
+  font-size: 14px;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.users-table .delete-button {
+  background: var(--accent-pink);
+}
+
+.users-table .delete-button:hover {
+  background: #922c58;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(80, 23, 96, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 18px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal h3 {
+  margin: 0 0 20px;
+  color: var(--primary-dark);
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-group input:disabled {
+  background: #f7f1fb;
+  color: #7b6590;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.modal-actions button {
+  flex: 1;
+}
+
+.modal-actions button:first-child {
+  background: var(--accent-green);
+  color: var(--text-light);
+}
+
+.modal-actions .cancel-button {
+  background: var(--accent-pink);
+  color: var(--text-light);
+}
+
+.modal-actions .cancel-button:hover {
+  background: #922c58;
+}
+
+@media (max-width: 768px) {
+  .user-manager-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .users-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .users-table {
+    min-width: 600px;
+  }
+
+  .modal {
+    margin: 20px;
+    padding: 20px;
+  }
+}
+
+@media (max-width: 560px) {
+  .user-manager {
+    padding: 8px 0;
+  }
+
+  .user-manager-header {
+    gap: 12px;
+  }
+
+  .add-user-button {
+    width: 100%;
+  }
+
+  .users-table-container {
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    overflow: visible;
+  }
+
+  .users-table,
+  .users-table thead,
+  .users-table tbody,
+  .users-table tr,
+  .users-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .users-table {
+    min-width: 100%;
+  }
+
+  .users-table thead {
+    display: none;
+  }
+
+  .users-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .users-table tr {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(171, 63, 160, 0.14);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .users-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px dashed rgba(171, 63, 160, 0.14);
+  }
+
+  .users-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--primary-dark);
+  }
+
+  .users-table td:last-child {
+    border-bottom: none;
+  }
+
+  .users-table td[colspan] {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .users-table td[colspan]::before {
+    content: none;
+  }
+
+  .table-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .users-table button {
+    width: 100%;
+  }
+
+  .modal {
+    width: calc(100% - 24px);
+    margin: 12px;
+    padding: 16px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+}

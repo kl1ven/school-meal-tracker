@@ -1,0 +1,32 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+git init
+git branch -M main
+git add .
+git commit -m "Initial commit"winget install --id Git.Git -e --source winget.vscode/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+server/database.sqlite
+server/database.sqlite-shm
+server/database.sqlite-wal
+tmp-export.xlsx
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
