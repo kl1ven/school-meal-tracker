@@ -55,28 +55,32 @@
 
 ## 🖼️ Скриншоты интерфейса
 
-<p align="center">
-  <img src="public/school.png" alt="School Meal Tracker Preview" width="120" />
-</p>
-
 <table>
   <tr>
-    <td align="center" width="33%">
-      <strong>🔐 Вход в систему</strong><br />
-      <sub>Авторизация учителя, менеджера и сотрудника столовой</sub>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/login.png" alt="Экран входа" width="100%" />
+      <br /><strong>🔐 Экран входа</strong>
+      <br /><sub>Авторизация учителя, менеджера и сотрудника столовой</sub>
     </td>
-    <td align="center" width="33%">
-      <strong>📊 Панель менеджера</strong><br />
-      <sub>Сводные данные, Excel-отчёты, праздники, классы и пользователи</sub>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/teacher-dashboard.png" alt="Панель учителя" width="100%" />
+      <br /><strong>👩‍🏫 Панель учителя</strong>
+      <br /><sub>Ввод заявок на питание и просмотр истории</sub>
     </td>
-    <td align="center" width="33%">
-      <strong>🍽️ Панель столовой</strong><br />
-      <sub>Заявки на день и фактическая выдача питания</sub>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/manager-dashboard.png" alt="Панель менеджера" width="100%" />
+      <br /><strong>📊 Панель менеджера</strong>
+      <br /><sub>Сводные данные, классы, пользователи, праздники и отчёты</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/canteen-dashboard.png" alt="Панель столовой" width="100%" />
+      <br /><strong>🍽️ Панель столовой</strong>
+      <br /><sub>Сводка на день и фактическая выдача питания</sub>
     </td>
   </tr>
 </table>
-
-> Для максимально эффектного вида на GitHub можно позже добавить реальные PNG/JPG-скриншоты интерфейса в папку `docs/screenshots/` и подставить их в этот блок без изменения структуры README.
 
 ---
 
