@@ -1,10 +1,11 @@
-import { exportToExcel } from '../utils/excelExport';
+import { exportToExcel, sortClasses } from '../utils/excelExport';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { printMealReport } from '../utils/printUtils';
 import { Class, Holiday, MealRecord, User } from '../types';
 import UserManager from './UserManager';
+import ClassOrderManager from './ClassOrderManager';
 import './ManagerDashboard.css';
 
 const getToday = () => new Date().toISOString().slice(0, 10);
@@ -31,7 +32,7 @@ const ManagerDashboard: React.FC = () => {
   const [printDate, setPrintDate] = useState(getToday());
   const [holidayWorking, setHolidayWorking] = useState(false);
   const [message, setMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'order'>('overview');
   const [editingClass, setEditingClass] = useState<Class | null>(null);
   const [newClass, setNewClass] = useState({ name: '', parallel: 1, teacher_id: null as number | null });
 
@@ -45,12 +46,7 @@ const ManagerDashboard: React.FC = () => {
         api.fetchHolidays(month, year),
         api.fetchTeachers(),
       ]);
-      setClasses(classesData.sort((a, b) => {
-        const gradeA = parseInt(a.name) || 0;
-        const gradeB = parseInt(b.name) || 0;
-        if (gradeA !== gradeB) return gradeA - gradeB;
-        return a.name.localeCompare(b.name);
-      }));
+      setClasses(sortClasses(classesData));
       setRecords(recordsData);
       setHolidays(holidaysData);
       setTeachers(teachersData);
@@ -196,6 +192,12 @@ const ManagerDashboard: React.FC = () => {
           onClick={() => setActiveTab('users')}
         >
           Пользователи
+        </button>
+        <button
+          className={activeTab === 'order' ? 'nav-button active' : 'nav-button'}
+          onClick={() => setActiveTab('order')}
+        >
+          Порядок классов
         </button>
       </nav>
 
@@ -426,6 +428,12 @@ const ManagerDashboard: React.FC = () => {
         <UserManager
           classes={classes.map((c) => ({ id: c.id.toString(), name: c.name }))}
           onUsersChanged={loadData}
+        />
+      ) : activeTab === 'order' ? (
+        <ClassOrderManager
+          classes={classes}
+          onSaveSuccess={loadData}
+          onMessage={setMessage}
         />
       ) : null}
     </div>

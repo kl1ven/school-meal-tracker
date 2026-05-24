@@ -24,22 +24,12 @@ const getUserWithClass = async (id) => getAsync(
 );
 
 const syncTeacherClass = async (userId, newClassId, oldClassId = null) => {
-  if (oldClassId && Number(oldClassId) !== Number(newClassId)) {
-    await runAsync('UPDATE classes SET teacher_id = NULL WHERE id = ?', [oldClassId]);
-  }
-
   if (!newClassId) {
-    await runAsync('UPDATE users SET class_id = NULL WHERE id = ?', [userId]);
     return;
   }
 
-  const classRow = await getAsync('SELECT teacher_id FROM classes WHERE id = ?', [newClassId]);
-  if (classRow?.teacher_id && Number(classRow.teacher_id) !== Number(userId)) {
-    await runAsync('UPDATE users SET class_id = NULL WHERE id = ?', [classRow.teacher_id]);
-  }
-
-  await runAsync('UPDATE classes SET teacher_id = ? WHERE id = ?', [userId, newClassId]);
-  await runAsync('UPDATE users SET class_id = ? WHERE id = ?', [newClassId, userId]);
+  await runAsync('UPDATE users SET class_id = NULL WHERE class_id = ? AND role = ? AND id <> ?', [newClassId, 'teacher', userId]);
+  await runAsync('UPDATE users SET class_id = ? WHERE id = ? AND role = ?', [newClassId, userId, 'teacher']);
 };
 
 router.get('/', async (_req, res) => {
@@ -112,10 +102,6 @@ router.put('/:id', async (req, res) => {
     [name || existing.name, email || existing.email, passwordHash, nextRole, nextClassId, id],
   );
 
-  if (existing.class_id && Number(existing.class_id) !== Number(nextClassId)) {
-    await runAsync('UPDATE classes SET teacher_id = NULL WHERE id = ?', [existing.class_id]);
-  }
-
   if (nextRole === 'teacher' && nextClassId) {
     await syncTeacherClass(Number(id), nextClassId, existing.class_id);
   }
@@ -134,10 +120,6 @@ router.delete('/:id', async (req, res) => {
   const existing = await getAsync('SELECT * FROM users WHERE id = ?', [id]);
   if (!existing) {
     return res.status(404).json({ message: 'Пользователь не найден.' });
-  }
-
-  if (existing.class_id) {
-    await runAsync('UPDATE classes SET teacher_id = NULL WHERE id = ?', [existing.class_id]);
   }
 
   await runAsync('DELETE FROM users WHERE id = ?', [id]);

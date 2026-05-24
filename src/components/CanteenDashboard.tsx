@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { sortClasses } from '../utils/excelExport';
 import { Class, Holiday, MealRecord } from '../types';
 import './ManagerDashboard.css';
 const getToday = () => new Date().toISOString().slice(0, 10);
@@ -23,12 +24,7 @@ const normalizeDateValue = (value: string) => {
   return value;
 };
 
-const sortClasses = (items: Class[]) => [...items].sort((a, b) => {
-  const gradeA = parseInt(a.name, 10) || 0;
-  const gradeB = parseInt(b.name, 10) || 0;
-  if (gradeA !== gradeB) return gradeA - gradeB;
-  return a.name.localeCompare(b.name, 'ru');
-});
+const sortByOrder = (items: Class[]) => sortClasses(items);
 
 type ParallelFilter = 'all' | '1-4' | '5-11';
 type ActualState = Record<number, { breakfast: number; lunch: number }>;
@@ -95,7 +91,7 @@ const CanteenDashboard: React.FC = () => {
         : fallbackClasses;
 
       const holidayItems = holidaysResult.status === 'fulfilled' ? holidaysResult.value : [];
-      const sortedClasses = sortClasses(classItems);
+      const sortedClasses = sortByOrder(classItems);
       const recordByClassId = new Map<number, MealRecord>(safeRecords.map((item) => [Number(item.class_id), item]));
       const nextActuals: ActualState = {};
 

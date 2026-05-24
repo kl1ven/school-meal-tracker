@@ -42,29 +42,48 @@ const allAsync = (sql, params = []) =>
 async function initDb() {
   await runAsync(`PRAGMA journal_mode = WAL`);
 
+  const classesTableSql = await getAsync(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'classes'`);
+  const classesHasTeacherId = classesTableSql?.sql?.includes('teacher_id');
+
+  if (classesHasTeacherId) {
+    await runAsync('DROP TABLE IF EXISTS classes_old');
+    await runAsync('ALTER TABLE classes RENAME TO classes_old');
+  }
+
   await runAsync(`
     CREATE TABLE IF NOT EXISTS classes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
       parallel INTEGER NOT NULL,
-      teacher_id INTEGER
+      sort_order INTEGER NOT NULL DEFAULT 0
     )
   `);
 
-  await runAsync(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('teacher', 'manager', 'canteen')),
-      class_id INTEGER,
-      FOREIGN KEY(class_id) REFERENCES classes(id)
-    )
-  `);
+  const classColumns = await allAsync('PRAGMA table_info(classes)');
+  const classesHasSortOrder = classColumns.some((column) => column.name === 'sort_order');
+  if (!classesHasSortOrder) {
+    await runAsync('ALTER TABLE classes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0');
+  }
+
+  if (classesHasTeacherId) {
+    await runAsync(`
+      UPDATE users
+      SET class_id = (
+        SELECT id FROM classes_old WHERE classes_old.teacher_id = users.id
+      )
+      WHERE role = 'teacher' AND class_id IS NULL
+    `);
+
+    await runAsync(`
+      INSERT INTO classes (id, name, parallel, sort_order)
+      SELECT id, name, parallel, 0 FROM classes_old
+    `);
+
+    await runAsync('DROP TABLE classes_old');
+  }
 
   const usersTableSql = await getAsync(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'`);
-  if (usersTableSql?.sql && !usersTableSql.sql.includes("'canteen'")) {
+  if (usersTableSql?.sql && (!usersTableSql.sql.includes("'canteen'") || !usersTableSql.sql.includes('UNIQUE(class_id)'))) {
     await runAsync('DROP TABLE IF EXISTS users_old');
     await runAsync('ALTER TABLE users RENAME TO users_old');
     await runAsync(`
@@ -75,7 +94,8 @@ async function initDb() {
         password_hash TEXT NOT NULL,
         role TEXT NOT NULL CHECK(role IN ('teacher', 'manager', 'canteen')),
         class_id INTEGER,
-        FOREIGN KEY(class_id) REFERENCES classes(id)
+        FOREIGN KEY(class_id) REFERENCES classes(id),
+        UNIQUE(class_id)
       )
     `);
     await runAsync(`
@@ -127,11 +147,43 @@ async function initDb() {
 
   const classesCount = (await getAsync('SELECT COUNT(*) AS count FROM classes')).count;
   if (classesCount === 0) {
-    const parallels = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11];
-    const names = ['1-а', '1-б', '2-а', '2-б', '3-а', '3-б', '4-а', '4-б', '5-а', '5-б', '6-а', '6-б', '7-а', '7-б', '8-а', '8-б', '9-а', '9-б', '10', '11'];
+    const parallels = [1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 8, 7, 9, 9, 9, 10, 11];
+    const names = [
+      '1-а', '1-б', '1г-доп', '1-в', '2-а', '2-б', '3-а', '3-б', '4-а', '4-б',
+      '5-а', '5-б', '6-а', '6-б', '7-а', '6в/7б', '8-а', '8-б', '8-в', '7в/8г',
+      '9-а', '9-б', '9в/10б', '10-а', '11',
+    ];
     for (let index = 0; index < names.length; index += 1) {
-      await runAsync('INSERT INTO classes (name, parallel) VALUES (?, ?)', [names[index], parallels[index] || 0]);
+      await runAsync('INSERT INTO classes (name, parallel, sort_order) VALUES (?, ?, ?)', [names[index], parallels[index] || 0, index + 1]);
     }
+  }
+
+  const CLASS_ORDER = [
+    '1-а', '1-б', '1г-доп', '1-в', '2-а', '2-б', '3-а', '3-б', '4-а', '4-б',
+    '5-а', '5-б', '6-а', '6-б', '7-а', '6в/7б', '8-а', '8-б', '8-в', '7в/8г',
+    '9-а', '9-б', '9в/10б', '10-а', '11'
+  ];
+
+  let maxSortOrder = 0;
+  const currentClassRows = await allAsync('SELECT id, name, sort_order FROM classes ORDER BY id');
+  currentClassRows.forEach((row) => {
+    if (typeof row.sort_order === 'number' && row.sort_order > maxSortOrder) {
+      maxSortOrder = row.sort_order;
+    }
+  });
+
+  for (let index = 0; index < CLASS_ORDER.length; index += 1) {
+    const order = index + 1;
+    await runAsync('UPDATE classes SET sort_order = ? WHERE name = ? AND sort_order = 0', [order, CLASS_ORDER[index]]);
+    if (order > maxSortOrder) {
+      maxSortOrder = order;
+    }
+  }
+
+  const remainingClasses = await allAsync('SELECT id FROM classes WHERE sort_order = 0 ORDER BY name');
+  for (const row of remainingClasses) {
+    maxSortOrder += 1;
+    await runAsync('UPDATE classes SET sort_order = ? WHERE id = ?', [maxSortOrder, row.id]);
   }
 
   async function ensureUser({ name, email, password, role, className = null }) {
@@ -145,19 +197,14 @@ async function initDb() {
     if (existingUser) {
       if (role === 'teacher' && classId && Number(existingUser.class_id) !== Number(classId)) {
         await runAsync('UPDATE users SET class_id = ? WHERE id = ?', [classId, existingUser.id]);
-        await runAsync('UPDATE classes SET teacher_id = ? WHERE id = ?', [existingUser.id, classId]);
       }
       return;
     }
 
-    const result = await runAsync(
+    await runAsync(
       'INSERT INTO users (name, email, password_hash, role, class_id) VALUES (?, ?, ?, ?, ?)',
       [name, email, bcrypt.hashSync(password, 10), role, classId],
     );
-
-    if (role === 'teacher' && classId) {
-      await runAsync('UPDATE classes SET teacher_id = ? WHERE id = ?', [result.lastID, classId]);
-    }
   }
 
   await ensureUser({

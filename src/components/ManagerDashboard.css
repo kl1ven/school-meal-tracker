@@ -258,9 +258,169 @@
   background: linear-gradient(90deg, #faf5ff 0%, #ffffff 100%);
 }
 
+.class-order-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.class-order-table th,
+.class-order-table td {
+  border: 1px solid rgba(95, 125, 145, 0.12);
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.class-order-table thead {
+  background: linear-gradient(135deg, #f5efff, #f2e7ff);
+}
+
+.class-order-table th {
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.class-order-table tbody tr:nth-child(even) {
+  background: #faf5ff;
+}
+
+.class-order-table tbody tr:hover {
+  background: rgba(95, 125, 145, 0.08);
+}
+
+.class-order-table tbody tr.draggable-row {
+  cursor: grab;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.class-order-table tbody tr.draggable-row:active {
+  cursor: grabbing;
+  transform: scale(0.998);
+}
+
+.class-order-table td input[type="number"] {
+  width: 100%;
+  min-width: 100px;
+  border: 2px solid var(--primary-light);
+  border-radius: 12px;
+  padding: 10px 12px 10px 38px;
+  font-size: 0.95rem;
+  background: #ffffff;
+  color: var(--text-dark);
+}
+
+.order-cell {
+  position: relative;
+}
+
+.drag-handle {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(95, 125, 145, 0.08);
+  color: var(--primary-dark);
+  font-weight: 700;
+  cursor: grab;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.drag-handle:hover {
+  background: rgba(95, 125, 145, 0.16);
+}
+
+.class-order-table tbody tr.draggable-row:active .drag-handle {
+  cursor: grabbing;
+  transform: translateY(-50%) scale(0.98);
+}
+
+.dashboard-description {
+  margin-top: -12px;
+  margin-bottom: 18px;
+  color: var(--text-soft);
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+.margin-top-medium {
+  margin-top: 18px;
+}
+
 .summary-table tbody tr:last-child td {
   font-weight: 700;
   border-top: 2px solid rgba(128, 63, 171, 0.35);
+}
+
+@media (max-width: 760px) {
+  .class-order-table,
+  .class-order-table thead,
+  .class-order-table tbody,
+  .class-order-table tr,
+  .class-order-table th,
+  .class-order-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .class-order-table {
+    min-width: 100%;
+    box-shadow: none;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .class-order-table thead {
+    display: none;
+  }
+
+  .class-order-table tbody {
+    display: grid;
+    gap: 14px;
+  }
+
+  .class-order-table tr {
+    background: #ffffff;
+    border: 1px solid rgba(95, 125, 145, 0.12);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .class-order-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: none;
+    border-bottom: 1px solid rgba(95, 125, 145, 0.12);
+  }
+
+  .class-order-table td:last-child {
+    border-bottom: none;
+  }
+
+  .class-order-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--primary-dark);
+    flex: 0 0 auto;
+  }
+
+  .class-order-table td input[type="number"] {
+    min-width: 130px;
+  }
 }
 
 .class-grid {

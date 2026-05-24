@@ -165,6 +165,21 @@ export const api = {
     return response.json();
   },
 
+  updateClassOrder: async (id: number, sort_order: number): Promise<Class> => {
+    const response = await request(`/api/classes/${id}/order`, {
+      method: 'PUT',
+      body: JSON.stringify({ sort_order }),
+    });
+    return response.json();
+  },
+
+  reorderClasses: async (classIds: number[]): Promise<void> => {
+    await request('/api/classes/order', {
+      method: 'PUT',
+      body: JSON.stringify({ class_ids: classIds }),
+    });
+  },
+
   deleteClass: async (id: number): Promise<void> => {
     await request(`/api/classes/${id}`, { method: 'DELETE' });
   },

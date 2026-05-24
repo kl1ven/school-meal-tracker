@@ -14,6 +14,7 @@ export type Class = {
   id: number;
   name: string;
   parallel: number;
+  sort_order?: number;
   teacher_id?: number | null;
   teacher_name?: string;
   teacher_email?: string;

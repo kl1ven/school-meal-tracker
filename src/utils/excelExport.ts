@@ -19,11 +19,36 @@ const MONTHS = [
 ];
 
 // Порядок классов согласно образцу
-const CLASS_ORDER = [
+export const CLASS_ORDER = [
   '1-а', '1-б', '1г-доп', '1-в', '2-а', '2-б', '3-а', '3-б', '4-а', '4-б',
   '5-а', '5-б', '6-а', '6-б', '7-а', '6в/7б', '8-а', '8-б', '8-в', '7в/8г',
   '9-а', '9-б', '9в/10б', '10-а', '11'
 ];
+
+export const sortClasses = (classes: Class[]): Class[] => {
+  return [...classes].sort((a, b) => {
+    const orderA = typeof a.sort_order === 'number' ? a.sort_order : 0;
+    const orderB = typeof b.sort_order === 'number' ? b.sort_order : 0;
+    if (orderA && orderB) {
+      return orderA - orderB;
+    }
+    if (orderA) {
+      return -1;
+    }
+    if (orderB) {
+      return 1;
+    }
+
+    const indexA = CLASS_ORDER.indexOf(a.name);
+    const indexB = CLASS_ORDER.indexOf(b.name);
+    if (indexA !== -1 && indexB !== -1) {
+      return indexA - indexB;
+    }
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    return a.name.localeCompare(b.name, 'ru');
+  });
+};
 
 const formatDate = (year: number, month: number, day: number): string => {
   const pad = (value: number) => value.toString().padStart(2, '0');
@@ -56,19 +81,6 @@ const getValueForCell = (
   }
 
   return type === 'breakfast' ? record.breakfast_count : record.lunch_count;
-};
-
-const sortClasses = (classes: Class[]): Class[] => {
-  return classes.sort((a, b) => {
-    const indexA = CLASS_ORDER.indexOf(a.name);
-    const indexB = CLASS_ORDER.indexOf(b.name);
-    if (indexA !== -1 && indexB !== -1) {
-      return indexA - indexB;
-    }
-    if (indexA !== -1) return -1;
-    if (indexB !== -1) return 1;
-    return a.name.localeCompare(b.name);
-  });
 };
 
 export async function exportToExcel(month: number, year: number): Promise<void> {
