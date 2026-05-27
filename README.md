@@ -1,10 +1,8 @@
 ﻿# 🍽️ School Meal Tracker
 
 <p align="center">
-  <img src="public/school.png" alt="School Meal Tracker" width="120" />
+  <strong>Система учёта питания в школе-интернате</strong>
 </p>
-
-<p align="center"><strong>Современная система учёта школьного питания с ролями, отчётами, печатью и интерфейсом для столовой.</strong></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/React-19-blue?logo=react" alt="React" />
@@ -12,48 +10,196 @@
   <img src="https://img.shields.io/badge/Node.js-Express-43853D?logo=node.js&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
   <img src="https://img.shields.io/badge/Status-Ready-success" alt="Status" />
-  <img src="https://img.shields.io/badge/Mobile-Friendly-8A2BE2" alt="Mobile Friendly" />
 </p>
-
-<p align="center">
-  <a href="https://github.com/elizabethSmith138/school-meal-tracker"><strong>GitHub Repository</strong></a> •
-  <a href="#-о-проекте"><strong>О проекте</strong></a> •
-  <a href="#-скриншоты-интерфейса"><strong>Скриншоты</strong></a> •
-  <a href="#-demo--deploy"><strong>Demo / Deploy</strong></a> •
-  <a href="#-установка-и-запуск"><strong>Запуск</strong></a>
-</p>
-
-Веб-приложение для **учёта школьного питания** с разделением по ролям, хранением данных в **SQLite**, экспортом в **Excel** и отдельным интерфейсом для **столовой**.
 
 ---
 
-## 📌 О проекте
+## 📌 Краткое описание
 
-Система помогает школе вести ежедневный учёт заявок на завтраки и обеды, контролировать фактическую выдачу питания и формировать отчёты для администрации и столовой.
-
-Приложение адаптировано под разные роли пользователей:
-- **классный руководитель** — подаёт данные по своему классу;
-- **менеджер питания** — управляет пользователями, классами, календарём и отчётами;
-- **столовая** — видит сводку по заявкам и вносит фактическую выдачу.
+Веб-приложение для учёта горячего питания в школе-интернате с разделением по ролям: **классный руководитель**, **менеджер питания** и **сотрудник столовой**.
 
 ---
 
 ## ✨ Основные возможности
 
-- авторизация с ролевым доступом: `teacher`, `manager`, `canteen`;
-- ведение заявок на питание по датам и классам;
-- ограничение ввода на выходные и праздничные дни;
-- календарь рабочих / нерабочих дней;
-- управление пользователями и назначением классных руководителей;
-- отдельная панель для столовой с фактической выдачей питания;
-- печатная форма для столовой;
-- экспорт ежемесячного отчёта в `Excel`;
-- хранение данных в базе `SQLite`;
-- адаптивный интерфейс для мобильных устройств.
+### 🔐 Аутентификация и авторизация
+- JWT-токены для безопасной авторизации
+- Три роли пользователей с разграничением прав доступа
+
+### 👥 Управление
+- **Управление классами**: сортировка, добавление, редактирование, удаление
+- **Управление пользователями**: создание, редактирование, удаление учителей и сотрудников столовой (только менеджер)
+
+### 📝 Заявки на питание
+- Подача заявок на завтраки и обеды от классного руководителя
+- Валидация дат с учётом выходных и праздников
+- Сводная таблица для менеджера (просмотр и редактирование заявок по дням)
+- Календарь праздников и выходных дней
+
+### 📊 Отчёты и аналитика
+- **Экспорт в Excel** с форматированием (объединённые ячейки, рамки, итоги, отметка "в" для выходных)
+- **Печатная форма** для столовой (новое окно, автоматическая печать)
+- **Аналитика для менеджера**: линейные графики, топ классов, сводка, сравнение с предыдущим месяцем
+
+### 📋 Журнал изменений
+- Полный аудит всех операций с фильтрами
+- Русские названия полей и действий (Создание, Изменение, Удаление)
+- Отсутствие технических колонок "таблица" и "ID записи"
+
+### 🔔 Система уведомлений
+- **Внутренние уведомления**: колокольчик, браузерные тосты, автообновление
+- **Email-уведомления** через Ethereal (разработка) или реальный SMTP (продакшн)
+- **Дедупликация**: одно уведомление от столовой в день
+- **Часовой пояс**: UTC+9 (Нерюнгри) для времени уведомлений и журнала
+
+### 📱 Интерфейс
+- Адаптивный дизайн для мобильных устройств
+- Удобная навигация для разных ролей
+
+---
+
+## � Роли пользователей
+
+| Роль | Возможности |
+|------|-------------|
+| **Классный руководитель** | Подача заявок на питание по своему классу, просмотр истории |
+| **Менеджер питания** | Управление пользователями, классами, праздниками, просмотр аналитики, экспорт и печать отчётов |
+| **Столовая** | Просмотр сводки на день, внесение фактической выдачи питания |
+
+---
+
+## 🧰 Технологический стек
+
+### Frontend
+- React 19
+- TypeScript
+- react-router-dom
+- recharts (графики)
+- react-icons (иконки)
+
+### Backend
+- Node.js
+- Express
+- SQLite
+- JWT (авторизация)
+
+### Отчёты и уведомления
+- ExcelJS (экспорт в Excel)
+- Nodemailer (email)
+- Ethereal (тестовые письма)
+
+---
+
+## 🔐 Тестовые учётные данные
+
+| Роль | Email | Пароль |
+|------|-------|--------|
+| Менеджер | `manager@example.com` | `manager123` |
+| Классный руководитель | `class_teacher@example.com` | `teacher123` |
+| Столовая | `canteen@example.com` | `canteen123` |
+
+---
+
+## 🚀 Установка и запуск
+
+### 1. Установка зависимостей
+
+```bash
+npm install
+```
+
+### 2. Запуск проекта (frontend + backend одновременно)
+
+```bash
+npm run dev
+```
+
+### 3. Отдельный запуск (при необходимости)
+
+```bash
+# Только backend
+npm run server
+
+# Только frontend
+npm start
+```
+
+### 🌐 Доступные адреса
+
+- **Frontend**: `http://localhost:3000`
+- **Backend API**: `http://localhost:4000`
+
+---
+
+## 🏗️ Структура проекта
+
+```
+school-meal-tracker/
+├── src/                          # Frontend (React + TypeScript)
+│   ├── components/               # UI-компоненты
+│   │   ├── AuditLog.tsx          # Журнал изменений
+│   │   ├── AnalyticsDashboard.tsx # Аналитика
+│   │   ├── CanteenDashboard.tsx  # Панель столовой
+│   │   ├── ManagerDashboard.tsx  # Панель менеджера
+│   │   ├── TeacherDashboard.tsx  # Панель учителя
+│   │   ├── NotificationBell.tsx  # Колокольчик уведомлений
+│   │   └── ...
+│   ├── services/                 # API-клиент
+│   │   └── api.ts
+│   ├── types/                    # TypeScript типы
+│   └── App.tsx
+├── server/                       # Backend (Node.js + Express)
+│   ├── index.js                  # Главный файл сервера
+│   ├── db.js                     # Инициализация БД
+│   ├── database.sqlite           # SQLite база данных
+│   └── routes/                   # API маршруты
+│       ├── auth.js
+│       ├── records.js
+│       ├── users.js
+│       ├── classes.js
+│       ├── audit.js
+│       ├── notifications.js
+│       ├── statistics.js
+│       └── ...
+├── public/                       # Публичные файлы
+├── docs/screenshots/             # Скриншоты интерфейса
+└── package.json
+```
 
 ---
 
 ## 🖼️ Скриншоты интерфейса
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/login.png" alt="Экран входа" width="100%" />
+      <br /><strong>🔐 Экран входа</strong>
+      <br /><sub>Авторизация учителя, менеджера и столовой</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/teacher-dashboard.png" alt="Панель учителя" width="100%" />
+      <br /><strong>👩‍🏫 Панель учителя</strong>
+      <br /><sub>Подача заявок на питание</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/manager-dashboard.png" alt="Панель менеджера" width="100%" />
+      <br /><strong>📊 Панель менеджера</strong>
+      <br /><sub>Управление, аналитика, отчёты</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/canteen-dashboard.png" alt="Панель столовой" width="100%" />
+      <br /><strong>🍽️ Панель столовой</strong>
+      <br /><sub>Сводка на день и фактическая выдача</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
+## �🖼️ Скриншоты интерфейса
 
 <table>
   <tr>
@@ -167,14 +313,83 @@ npm start
 
 ## ⚙️ Переменные окружения
 
-При необходимости можно создать файл `.env` в корне проекта:
+Создайте файл `.env` в корне проекта (см. `.env.example` для примера):
 
 ```env
-JWT_SECRET=your_secret_key
-DB_FILE=server/database.sqlite
+# Email Configuration (Optional)
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_smtp_login
+SMTP_PASS=your_smtp_password
+EMAIL_FROM=noreply@example.com
 ```
 
-Если файл `.env` не задан, используются значения по умолчанию.
+### 📧 Email-конфигурация
+
+Приложение поддерживает **две режима отправки email**:
+
+#### 1️⃣ Режим разработки (по умолчанию) — Ethereal test account
+Если переменные `SMTP_*` не установлены, система автоматически создаст тестовый Ethereal-аккаунт и выведет учётные данные в консоль:
+```
+[Mailer] ✅ Ethereal test account created:
+  Email: xxxxx@ethereal.email
+  Password: xxxxxxxxxxxxx
+  Preview URL: https://ethereal.email/messages
+```
+Письма можно просмотреть на https://ethereal.email/messages — не требует реальной отправки.
+
+#### 2️⃣ Режим продакшена — Real SMTP
+Укажите свой SMTP-сервер через переменные окружения:
+
+**Брево (Sendinblue):**
+```env
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_brevo_smtp_login
+SMTP_PASS=your_brevo_smtp_key
+EMAIL_FROM=noreply@yourschool.com
+```
+
+**Gmail (с App Password):**
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_16_character_app_password
+EMAIL_FROM=your_email@gmail.com
+```
+
+**Яндекс.Почта:**
+```env
+SMTP_HOST=smtp.yandex.ru
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your_email@yandex.ru
+SMTP_PASS=your_password
+EMAIL_FROM=your_email@yandex.ru
+```
+
+**Mail.ru:**
+```env
+SMTP_HOST=smtp.mail.ru
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your_email@mail.ru
+SMTP_PASS=your_password
+EMAIL_FROM=your_email@mail.ru
+```
+
+Полный список примеров см. в `.env.example`.
+
+### 📬 Уведомления
+Система отправляет email-уведомления в следующих случаях:
+- классный руководитель подал новую заявку → менеджеру
+- при расхождении фактической выдачи от плана → менеджеру
+- менеджер подтвердил/обработал заявку → столовой
+- доступны тестовые уведомления (только менеджер)
 
 ---
 
@@ -194,53 +409,81 @@ npm run server
 
 ---
 
-## 📁 Структура проекта
+## � Email-конфигурация
 
-```text
-src/
-  components/      UI-компоненты и панели ролей
-  context/         контекст авторизации
-  services/        API-клиент
-  types/           общие TypeScript-типы
-  utils/           экспорт и печать
+### Режим разработки (по умолчанию) — Ethereal test account
 
-server/
-  routes/          API-маршруты
-  db.js            подключение к SQLite
-  index.js         точка входа backend
+Если переменные `SMTP_*` не установлены, система автоматически создаст тестовый Ethereal-аккаунт:
+
+```
+[Mailer] ✅ Ethereal test account created:
+  Email: xxxxx@ethereal.email
+  Password: xxxxxxxxxxxxx
+  Preview URL: https://ethereal.email/messages
+```
+
+Письма можно просмотреть на `https://ethereal.email/messages`.
+
+### Режим продакшена — Real SMTP
+
+Создайте файл `.env` в корне проекта:
+
+```env
+# Email Configuration
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_smtp_login
+SMTP_PASS=your_smtp_password
+EMAIL_FROM=noreply@example.com
+```
+
+Примеры для популярных SMTP-сервисов см. в `.env.example`.
+
+---
+
+## 🔄 Команды для разработки
+
+```bash
+# Установка зависимостей
+npm install
+
+# Запуск frontend + backend
+npm run dev
+
+# Только backend
+npm run server
+
+# Только frontend
+npm start
+
+# Сборка для production
+npm run build
+
+# Тесты
+npm run test
 ```
 
 ---
 
-## 📋 Бизнес-логика
+## 💡 Возможности для дальнейшего развития
 
-- учителя не могут вносить данные на выходные и праздничные дни;
-- для выходных и праздников в отчётах используется пометка `в`;
-- столовая может фиксировать **фактическую выдачу**, отдельно от поданных заявок;
-- менеджер может редактировать календарь рабочих дней и формировать печатные / Excel-отчёты.
-
----
-
-## ✅ Текущее состояние
-
-Проект:
-- успешно собирается через `npm run build`;
-- проходит базовые тесты;
-- поддерживает основные сценарии для `teacher`, `manager` и `canteen`.
+- Интеграция с Telegram для уведомлений
+- Более детальная аналитика по классам и блюдам
+- Поддержка нескольких школ и филиалов
+- Синхронизация с системой управления школой
 
 ---
 
-## 📄 Назначение
+## 📝 Лицензия
 
-Этот проект можно использовать как учебную или рабочую систему для цифровизации школьного учёта питания, заявок и отчётности.
+Проект создан для учебных целей.
 
 ---
 
-## 🌟 Для GitHub-портфолио
+## 👨‍💻 Разработка
 
-Проект демонстрирует навыки:
-- построения full-stack приложения на `React + TypeScript + Express + SQLite`;
-- проектирования ролей и прав доступа;
-- работы с таблицами, отчётами и печатными формами;
-- адаптации интерфейса под мобильные устройства;
-- организации прикладной бизнес-логики для реального сценария школы.
+Проект готов к локальному запуску и может быть развёрнут на VPS, Render, Railway или других облачных платформах.
+
+Для вопросов и предложений см. GitHub репозиторий проекта.
+
