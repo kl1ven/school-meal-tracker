@@ -121,6 +121,22 @@ async function initDb() {
     )
   `);
 
+  await runAsync(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      user_name TEXT,
+      action TEXT NOT NULL,
+      table_name TEXT NOT NULL,
+      record_id INTEGER,
+      old_values TEXT,
+      new_values TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id),
+      FOREIGN KEY(record_id) REFERENCES meal_records(id)
+    )
+  `);
+
   const mealColumns = await allAsync(`PRAGMA table_info(meal_records)`);
   if (!mealColumns.some((column) => column.name === 'created_by')) {
     await runAsync('ALTER TABLE meal_records ADD COLUMN created_by INTEGER');
@@ -144,6 +160,39 @@ async function initDb() {
       is_working INTEGER NOT NULL DEFAULT 1
     )
   `);
+
+  await runAsync(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      is_read INTEGER NOT NULL DEFAULT 0,
+      link TEXT,
+      email_sent INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+  `);
+
+  const notifColumns = await allAsync('PRAGMA table_info(notifications)');
+  if (notifColumns.length > 0) {
+    await runAsync('CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)');
+    await runAsync('CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)');
+  }
+
+  // Track daily notifications sent (e.g. canteen updates per date)
+  await runAsync(`
+    CREATE TABLE IF NOT EXISTS daily_notifications_sent (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      type TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(date, type)
+    )
+  `);
+  await runAsync('CREATE INDEX IF NOT EXISTS idx_daily_notifications_date_type ON daily_notifications_sent(date, type)');
 
   const classesCount = (await getAsync('SELECT COUNT(*) AS count FROM classes')).count;
   if (classesCount === 0) {

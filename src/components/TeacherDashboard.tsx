@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { Class, Holiday, MealRecord } from '../types';
+import NotificationBell from './NotificationBell';
 import './TeacherDashboard.css';
 
 const getToday = () => new Date().toISOString().slice(0, 10);
@@ -143,9 +144,12 @@ const TeacherDashboard: React.FC = () => {
           <p>Добро пожаловать, {user?.fullName}</p>
           <p>Класс: {classInfo?.name || 'не назначен'}</p>
         </div>
-        <button className="logout-button" onClick={logout}>
-          Выйти
-        </button>
+        <div className="header-buttons">
+          <NotificationBell />
+          <button className="logout-button" onClick={logout}>
+            Выйти
+          </button>
+        </div>
       </header>
 
       <section className="dashboard-section">

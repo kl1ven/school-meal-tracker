@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { printMealReport } from '../utils/printUtils';
 import { Class, Holiday, MealRecord, User } from '../types';
+import AuditLog from './AuditLog';
+import AnalyticsDashboard from './AnalyticsDashboard';
+import NotificationBell from './NotificationBell';
+import NotificationList from './NotificationList';
 import UserManager from './UserManager';
 import ClassOrderManager from './ClassOrderManager';
 import './ManagerDashboard.css';
@@ -32,24 +36,32 @@ const ManagerDashboard: React.FC = () => {
   const [printDate, setPrintDate] = useState(getToday());
   const [holidayWorking, setHolidayWorking] = useState(false);
   const [message, setMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'order'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'order' | 'audit' | 'analytics' | 'notifications'>('overview');
+  
   const [editingClass, setEditingClass] = useState<Class | null>(null);
   const [newClass, setNewClass] = useState({ name: '', parallel: 1, teacher_id: null as number | null });
+
+  // Test notification states
+  const [testNotif, setTestNotif] = useState({ userId: '', title: '', message: '' });
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [testNotifMessage, setTestNotifMessage] = useState('');
 
   const daysInMonth = new Date(year, month, 0).getDate();
 
   const loadData = useCallback(async () => {
     try {
-      const [classesData, recordsData, holidaysData, teachersData] = await Promise.all([
+      const [classesData, recordsData, holidaysData, teachersData, usersData] = await Promise.all([
         api.fetchClasses(),
         api.fetchMonthRecords(month, year),
         api.fetchHolidays(month, year),
         api.fetchTeachers(),
+        api.fetchUsers(),
       ]);
       setClasses(sortClasses(classesData));
       setRecords(recordsData);
       setHolidays(holidaysData);
       setTeachers(teachersData);
+      setAllUsers(usersData);
     } catch (err) {
       setMessage((err as Error).message);
     }
@@ -168,6 +180,28 @@ const ManagerDashboard: React.FC = () => {
     }
   };
 
+  const handleSendTestNotification = async () => {
+    if (!testNotif.userId || !testNotif.title || !testNotif.message) {
+      setTestNotifMessage('Заполните все поля');
+      return;
+    }
+    try {
+      const result = await api.sendTestNotification({
+        userId: Number(testNotif.userId),
+        title: testNotif.title,
+        message: testNotif.message,
+      });
+      if (result.success) {
+        setTestNotifMessage(`Уведомление отправлено! Email: ${result.email?.success ? 'отправлен' : 'не отправлен'}`);
+        setTestNotif({ userId: '', title: '', message: '' });
+      } else {
+        setTestNotifMessage('Ошибка при отправке уведомления');
+      }
+    } catch (err) {
+      setTestNotifMessage((err as Error).message);
+    }
+  };
+
   return (
     <div className="dashboard-page">
       <header className="dashboard-header">
@@ -175,9 +209,16 @@ const ManagerDashboard: React.FC = () => {
           <h1>Менеджер питания</h1>
           <p>Добро пожаловать, {user?.fullName}</p>
         </div>
-        <button className="logout-button" onClick={logout}>
-          Выйти
-        </button>
+        <div className="header-buttons">
+          <NotificationBell
+            onViewAll={() => {
+              setActiveTab('notifications');
+            }}
+          />
+          <button className="logout-button" onClick={logout}>
+            Выйти
+          </button>
+        </div>
       </header>
 
       <nav className="dashboard-nav">
@@ -198,6 +239,24 @@ const ManagerDashboard: React.FC = () => {
           onClick={() => setActiveTab('order')}
         >
           Порядок классов
+        </button>
+        <button
+          className={activeTab === 'notifications' ? 'nav-button active' : 'nav-button'}
+          onClick={() => setActiveTab('notifications')}
+        >
+          Уведомления
+        </button>
+        <button
+          className={activeTab === 'analytics' ? 'nav-button active' : 'nav-button'}
+          onClick={() => setActiveTab('analytics')}
+        >
+          Аналитика
+        </button>
+        <button
+          className={activeTab === 'audit' ? 'nav-button active' : 'nav-button'}
+          onClick={() => setActiveTab('audit')}
+        >
+          Журнал изменений
         </button>
       </nav>
 
@@ -290,6 +349,44 @@ const ManagerDashboard: React.FC = () => {
               </label>
               <button type="button" onClick={saveHoliday}>
                 Сохранить
+              </button>
+            </div>
+          </section>
+
+          <section className="dashboard-section">
+            <h2>Тестовое уведомление</h2>
+            {testNotifMessage && <div className={testNotifMessage.includes('ошибка') || testNotifMessage.includes('Заполните') ? 'message error' : 'message success'}>{testNotifMessage}</div>}
+            <div className="test-notification-form">
+              <label>
+                Получатель
+                <select value={testNotif.userId} onChange={(e) => setTestNotif({ ...testNotif, userId: e.target.value })}>
+                  <option value="">Выберите пользователя</option>
+                  {allUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName} ({u.role})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Заголовок
+                <input
+                  type="text"
+                  placeholder="Заголовок уведомления"
+                  value={testNotif.title}
+                  onChange={(e) => setTestNotif({ ...testNotif, title: e.target.value })}
+                />
+              </label>
+              <label>
+                Сообщение
+                <textarea
+                  placeholder="Текст уведомления"
+                  value={testNotif.message}
+                  onChange={(e) => setTestNotif({ ...testNotif, message: e.target.value })}
+                />
+              </label>
+              <button type="button" onClick={handleSendTestNotification}>
+                Отправить тестовое уведомление
               </button>
             </div>
           </section>
@@ -435,6 +532,12 @@ const ManagerDashboard: React.FC = () => {
           onSaveSuccess={loadData}
           onMessage={setMessage}
         />
+      ) : activeTab === 'notifications' ? (
+        <NotificationList />
+      ) : activeTab === 'analytics' ? (
+        <AnalyticsDashboard />
+      ) : activeTab === 'audit' ? (
+        <AuditLog />
       ) : null}
     </div>
   )

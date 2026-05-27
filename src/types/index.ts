@@ -33,6 +33,47 @@ export type MealRecord = {
   parallel?: number;
 };
 
+export type AuditLogEntry = {
+  id: number;
+  userId: number;
+  userName: string;
+  action: string;
+  tableName: string;
+  recordId: number;
+  oldValues: Record<string, any> | null;
+  newValues: Record<string, any>;
+  createdAt: string;
+};
+
+export type DailyStatResponse = {
+  dates: string[];
+  breakfast: number[];
+  lunch: number[];
+};
+
+export type ClassStatItem = {
+  className: string;
+  total: number;
+};
+
+export type MonthlySummary = {
+  totalBreakfast: number;
+  totalLunch: number;
+  avgBreakfast: number;
+  avgLunch: number;
+  maxBreakfast: number;
+  minBreakfast: number;
+  maxLunch: number;
+  minLunch: number;
+  daysCount: number;
+  breakfastShare: number;
+};
+
+export type ComparisonResponse = {
+  breakfast: { current: number; previous: number; changePercent: number };
+  lunch: { current: number; previous: number; changePercent: number };
+};
+
 export type ActualMealRecord = {
   date: string;
   class_id: number;
@@ -49,4 +90,18 @@ export type Holiday = {
 export type AuthResponse = {
   token: string;
   user: User;
+};
+
+export type NotificationType = 'reminder' | 'discrepancy' | 'confirmation' | 'new_request' | 'test';
+
+export type Notification = {
+  id: number;
+  userId: number;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: number;
+  link: string | null;
+  emailSent: number;
+  createdAt: string;
 };

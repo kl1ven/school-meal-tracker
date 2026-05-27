@@ -29,6 +29,12 @@
   color: var(--text-soft);
 }
 
+.header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .logout-button {
   background: var(--accent-pink);
   color: var(--text-light);

@@ -18,6 +18,141 @@ const isWeekendDate = (value) => {
   return day === 0 || day === 6;
 };
 
+const AUDIT_FIELDS = ['date', 'class_id', 'breakfast_count', 'lunch_count', 'actual_breakfast_count', 'actual_lunch_count'];
+
+const getChangedValues = (oldValues, newValues) => {
+  const changedOld = {};
+  const changedNew = {};
+
+  AUDIT_FIELDS.forEach((field) => {
+    const oldValue = oldValues[field];
+    const newValue = newValues[field];
+    if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+      changedOld[field] = oldValue;
+      changedNew[field] = newValue;
+    }
+  });
+
+  return {
+    oldValues: Object.keys(changedOld).length ? changedOld : null,
+    newValues: Object.keys(changedNew).length ? changedNew : null,
+  };
+};
+
+const logAudit = async ({ user, action, tableName, recordId, oldValues, newValues }) => {
+  const auditOld = oldValues ? JSON.stringify(oldValues) : null;
+  const auditNew = JSON.stringify(newValues);
+  await runAsync(
+    'INSERT INTO audit_log (user_id, user_name, action, table_name, record_id, old_values, new_values, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [user.id, user.name, action, tableName, recordId, auditOld, auditNew, new Date().toISOString()],
+  );
+};
+
+// Helper function to create notification
+const createNotification = async ({ userId, type, title, message, link }) => {
+  const result = await runAsync(
+    `INSERT INTO notifications (user_id, type, title, message, link, created_at)
+     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+    [userId, type, title, message, link || null]
+  );
+
+  return result.lastID;
+};
+
+// Create notification but avoid sending duplicates within a short window
+const createNotificationIfNotRecent = async ({ userId, type, title, message, link, windowSeconds = 30 }) => {
+  // Check for a recent identical notification (same user, type and message)
+  const recent = await getAsync(
+    `SELECT id FROM notifications WHERE user_id = ? AND type = ? AND message = ? AND created_at >= datetime('now', ?)`,
+    [userId, type, message, `-${windowSeconds} seconds`]
+  );
+
+  if (!recent) {
+    return createNotification({ userId, type, title, message, link });
+  }
+
+  return null;
+};
+
+// Notify all managers about new request
+const notifyManagersAboutNewRequest = async (date, classId) => {
+  const managers = await allAsync('SELECT id FROM users WHERE role = ?', ['manager']);
+  const classInfo = await getAsync('SELECT name FROM classes WHERE id = ?', [classId]);
+
+  for (const manager of managers) {
+    await createNotification({
+      userId: manager.id,
+      type: 'new_request',
+      title: 'Новая заявка по питанию',
+      message: `Поступила новая заявка по питанию для класса ${classInfo?.name || 'неизвестный'} на ${date}.`,
+      link: `/manager/records?date=${date}&classId=${classId}`,
+    });
+  }
+};
+
+// Notify teacher about manager edit
+const notifyTeacherAboutEdit = async (date, classId, teacherId) => {
+  const classInfo = await getAsync('SELECT name FROM classes WHERE id = ?', [classId]);
+
+  await createNotification({
+    userId: teacherId,
+    type: 'manager_edit',
+    title: 'Менеджер изменил вашу заявку',
+    message: `Менеджер изменил данные по питанию для класса ${classInfo?.name || 'неизвестный'} на ${date}.`,
+    link: `/teacher/records?date=${date}`,
+  });
+};
+
+// Notify teacher about actual data change
+const notifyTeacherAboutActualChange = async (date, classId, teacherId, breakfastDiff, lunchDiff) => {
+  const classInfo = await getAsync('SELECT name FROM classes WHERE id = ?', [classId]);
+  const changes = [];
+  if (breakfastDiff >= 1) changes.push(`завтрак (разница ${breakfastDiff})`);
+  if (lunchDiff >= 1) changes.push(`обед (разница ${lunchDiff})`);
+
+  await createNotification({
+    userId: teacherId,
+    type: 'actual_changed',
+    title: 'Фактическая выдача отличается от вашей заявки',
+    message: `Для класса ${classInfo?.name || 'неизвестный'} на ${date} обнаружено расхождение: ${changes.join(', ')}.`,
+    link: `/teacher/records?date=${date}`,
+  });
+};
+
+// Notify manager about discrepancy
+const notifyManagerAboutDiscrepancy = async (date, classId, breakfast, lunch) => {
+  const managers = await allAsync('SELECT id FROM users WHERE role = ?', ['manager']);
+  const classInfo = await getAsync('SELECT name FROM classes WHERE id = ?', [classId]);
+
+  const discrepancyInfo = [];
+  if (breakfast >= 1) discrepancyInfo.push(`Завтрак: разница ${breakfast}`);
+  if (lunch >= 1) discrepancyInfo.push(`Обед: разница ${lunch}`);
+
+  const title = 'Расхождение заявленных и фактических порций';
+  const message = `В классе ${classInfo?.name || 'неизвестный'} на ${date} обнаружено расхождение: ${discrepancyInfo.join(', ')}.`;
+  const link = `/manager/records?date=${date}&classId=${classId}`;
+
+  // Send a single notification per manager, but avoid duplicates within a short time window
+  for (const manager of managers) {
+    await createNotificationIfNotRecent({ userId: manager.id, type: 'discrepancy', title, message, link });
+  }
+};
+
+// Notify canteen about confirmed data
+const notifyCanteenAboutConfirmation = async (date, classId) => {
+  const canteens = await allAsync('SELECT id FROM users WHERE role = ?', ['canteen']);
+  const classInfo = await getAsync('SELECT name FROM classes WHERE id = ?', [classId]);
+
+  const title = 'Фактические данные подтверждены';
+  const message = `Менеджер подтвердил фактические данные по питанию для класса ${classInfo?.name || 'неизвестный'} на ${date}.`;
+  const link = `/canteen/records?date=${date}&classId=${classId}`;
+
+  for (const canteen of canteens) {
+    await createNotificationIfNotRecent({ userId: canteen.id, type: 'confirmation', title, message, link });
+  }
+};
+
+
 router.use(authenticateToken);
 
 router.get('/history', async (req, res) => {
@@ -109,10 +244,45 @@ router.post('/', async (req, res) => {
 
   const existing = await getAsync('SELECT * FROM meal_records WHERE date = ? AND class_id = ?', [date, class_id]);
   if (existing) {
+    const newValues = {
+      date: existing.date,
+      class_id: existing.class_id,
+      breakfast_count,
+      lunch_count,
+      actual_breakfast_count: existing.actual_breakfast_count,
+      actual_lunch_count: existing.actual_lunch_count,
+    };
+    const { oldValues: changedOld, newValues: changedNew } = getChangedValues(existing, newValues);
+
     await runAsync(
       'UPDATE meal_records SET breakfast_count = ?, lunch_count = ?, created_by = ? WHERE id = ?',
       [breakfast_count, lunch_count, req.user.id, existing.id],
     );
+
+    if (changedOld && changedNew) {
+      await logAudit({
+        user: req.user,
+        action: 'UPDATE',
+        tableName: 'meal_records',
+        recordId: existing.id,
+        oldValues: changedOld,
+        newValues: changedNew,
+      });
+    }
+
+    // Notify managers if teacher modified the request
+    if (req.user.role === 'teacher') {
+      await notifyManagersAboutNewRequest(date, class_id);
+    }
+
+    // Notify teacher if manager modified the request
+    if (req.user.role === 'manager') {
+      const teacher = await getAsync('SELECT id FROM users WHERE role = ? AND class_id = ?', ['teacher', class_id]);
+      if (teacher) {
+        await notifyTeacherAboutEdit(date, class_id, teacher.id);
+      }
+    }
+
     return res.json({
       ...existing,
       breakfast_count,
@@ -125,6 +295,28 @@ router.post('/', async (req, res) => {
     'INSERT INTO meal_records (date, class_id, breakfast_count, lunch_count, created_by) VALUES (?, ?, ?, ?, ?)',
     [date, class_id, breakfast_count, lunch_count, req.user.id],
   );
+
+  await logAudit({
+    user: req.user,
+    action: 'CREATE',
+    tableName: 'meal_records',
+    recordId: result.lastID,
+    oldValues: null,
+    newValues: {
+      date,
+      class_id,
+      breakfast_count,
+      lunch_count,
+      actual_breakfast_count: existing?.actual_breakfast_count ?? 0,
+      actual_lunch_count: existing?.actual_lunch_count ?? 0,
+    },
+  });
+
+  // Notify managers about new request from teacher
+  if (req.user.role === 'teacher') {
+    await notifyManagersAboutNewRequest(date, class_id);
+  }
+
   res.json({ id: result.lastID, date, class_id, breakfast_count, lunch_count, created_by: req.user.id });
 });
 
@@ -142,11 +334,88 @@ router.post('/actual', async (req, res) => {
   }
 
   const existing = await getAsync('SELECT * FROM meal_records WHERE date = ? AND class_id = ?', [date, class_id]);
+  
+  // Check for discrepancy
+  let breakfastDiff = 0;
+  let lunchDiff = 0;
+  
   if (existing) {
+    breakfastDiff = Math.abs(existing.breakfast_count - actual_breakfast_count);
+    lunchDiff = Math.abs(existing.lunch_count - actual_lunch_count);
+    console.log(`[records] actual save by ${req.user.role} for date=${date}, class=${class_id}, breakfastDiff=${breakfastDiff}, lunchDiff=${lunchDiff}`);
+    
+    // Notify manager about discrepancy (any difference >= 1)
+    if (breakfastDiff >= 1 || lunchDiff >= 1) {
+      await notifyManagerAboutDiscrepancy(date, class_id, breakfastDiff, lunchDiff);
+    }
+    
+    // Notify teacher about actual data change
+    if (breakfastDiff >= 1 || lunchDiff >= 1) {
+      const teacher = await getAsync('SELECT id FROM users WHERE role = ? AND class_id = ?', ['teacher', class_id]);
+      if (teacher) {
+        await notifyTeacherAboutActualChange(date, class_id, teacher.id, breakfastDiff, lunchDiff);
+      }
+    }
+  }
+
+  if (existing) {
+    const newValues = {
+      date: existing.date,
+      class_id: existing.class_id,
+      breakfast_count: existing.breakfast_count,
+      lunch_count: existing.lunch_count,
+      actual_breakfast_count,
+      actual_lunch_count,
+    };
+    const { oldValues: changedOld, newValues: changedNew } = getChangedValues(existing, newValues);
+
     await runAsync(
       'UPDATE meal_records SET actual_breakfast_count = ?, actual_lunch_count = ? WHERE id = ?',
       [actual_breakfast_count, actual_lunch_count, existing.id],
     );
+
+    if (changedOld && changedNew) {
+      await logAudit({
+        user: req.user,
+        action: 'UPDATE',
+        tableName: 'meal_records',
+        recordId: existing.id,
+        oldValues: changedOld,
+        newValues: changedNew,
+      });
+    }
+
+    // Notify canteen about confirmation (if manager saves) or managers about canteen confirmation
+    if (req.user.role === 'manager') {
+      await notifyCanteenAboutConfirmation(date, class_id);
+    } else if (req.user.role === 'canteen') {
+      // For canteen: send a single notification to managers per date (once per day)
+      try {
+        console.log(`[records] canteen actual save for date=${date}, class=${class_id}`);
+        const existingSent = await getAsync('SELECT id FROM daily_notifications_sent WHERE date = ? AND type = ?', [date, 'canteen_update']);
+        console.log(`[records] daily_notifications_sent check for date=${date}: ${existingSent ? 'found' : 'not found'}`);
+        if (!existingSent) {
+          const insertResult = await runAsync('INSERT OR IGNORE INTO daily_notifications_sent (date, type) VALUES (?, ?)', [date, 'canteen_update']);
+          console.log(`[records] daily_notifications_sent insert result for date=${date}: changes=${insertResult.changes}`);
+          if (insertResult.changes > 0) {
+            const managers = await allAsync('SELECT id FROM users WHERE role = ?', ['manager']);
+            const message = `Столовая внесла фактические данные за ${date}`;
+            const title = 'Столовая внесла фактические данные';
+            const link = `/manager/records?date=${date}`;
+            for (const manager of managers) {
+              await createNotification({ userId: manager.id, type: 'canteen_update', title, message, link });
+            }
+          } else {
+            console.log(`[records] skipping canteen notification for date=${date} because insert was ignored`);
+          }
+        } else {
+          console.log(`[records] skipping canteen notification for date=${date} because already sent`);
+        }
+      } catch (err) {
+        console.error('Error handling daily canteen notification', err);
+      }
+    }
+
     return res.json({
       ...existing,
       actual_breakfast_count,
@@ -160,6 +429,29 @@ router.post('/actual', async (req, res) => {
     ) VALUES (?, ?, 0, 0, ?, ?, ?)`,
     [date, class_id, actual_breakfast_count, actual_lunch_count, req.user.id],
   );
+
+  const newRecord = {
+    date,
+    class_id,
+    breakfast_count: 0,
+    lunch_count: 0,
+    actual_breakfast_count,
+    actual_lunch_count,
+  };
+
+  await logAudit({
+    user: req.user,
+    action: 'CREATE',
+    tableName: 'meal_records',
+    recordId: result.lastID,
+    oldValues: null,
+    newValues: newRecord,
+  });
+
+  // Notify about confirmation for new record
+  if (req.user.role === 'manager') {
+    await notifyCanteenAboutConfirmation(date, class_id);
+  }
 
   res.json({
     id: result.lastID,

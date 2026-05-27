@@ -8,14 +8,14 @@ import CanteenDashboard from './components/CanteenDashboard';
 import { UserRole } from './types';
 import './App.css';
 
-const RequireAuth: React.FC<{ role: UserRole; children: React.ReactElement }> = ({ role, children }) => {
+const RequireAuth: React.FC<{ role?: UserRole; children: React.ReactElement }> = ({ role, children }) => {
   const { user } = useAuth();
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== role) {
+  if (role && user.role !== role) {
     return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
   }
 
@@ -61,3 +61,4 @@ function App() {
 }
 
 export default App;
+

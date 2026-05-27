@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { sortClasses } from '../utils/excelExport';
 import { Class, Holiday, MealRecord } from '../types';
+import NotificationBell from './NotificationBell';
 import './ManagerDashboard.css';
 const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -38,13 +39,13 @@ const CanteenDashboard: React.FC = () => {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [actuals, setActuals] = useState<ActualState>({});
   const [message, setMessage] = useState('');
+  const [toast, setToast] = useState<{ text: string; type: 'success' | 'error'; visible: boolean }>({ text: '', type: 'success', visible: false });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const loadData = useCallback(async (selectedDate: string) => {
     const normalizedDate = normalizeDateValue(selectedDate);
     setIsLoading(true);
-    setMessage('');
 
     try {
       if (!normalizedDate) {
@@ -186,6 +187,13 @@ const CanteenDashboard: React.FC = () => {
     }));
   };
 
+  const showToast = (text: string, type: 'success' | 'error') => {
+    setToast({ text, type, visible: true });
+    setTimeout(() => {
+      setToast((prev) => (prev.text === text ? { ...prev, visible: false } : prev));
+    }, 3000);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setMessage('');
@@ -201,10 +209,13 @@ const CanteenDashboard: React.FC = () => {
         })),
       );
 
-      setMessage('Сохранено в базу данных');
       await loadData(normalizedDate);
+      showToast('Сохранено', 'success');
+      setMessage('');
     } catch (err) {
-      setMessage((err as Error).message || 'Не удалось сохранить данные.');
+      const text = (err as Error).message || 'Не удалось сохранить данные.';
+      showToast(text, 'error');
+      setMessage(text);
     } finally {
       setIsSaving(false);
     }
@@ -217,9 +228,12 @@ const CanteenDashboard: React.FC = () => {
           <h1>Столовая</h1>
           <p>Добро пожаловать, {user?.fullName}</p>
         </div>
-        <button className="logout-button" onClick={logout}>
-          Выйти
-        </button>
+        <div className="header-buttons">
+          <NotificationBell />
+          <button className="logout-button" onClick={logout}>
+            Выйти
+          </button>
+        </div>
       </header>
 
       <section className="dashboard-section">
@@ -246,6 +260,12 @@ const CanteenDashboard: React.FC = () => {
         )}
 
         {message && <p className="dashboard-message">{message}</p>}
+
+        {toast.visible && (
+          <div className={`toast toast-${toast.type}`}>
+            {toast.text}
+          </div>
+        )}
 
         <div className="table-wrapper">
           <table className="summary-table canteen-table">

@@ -1,4 +1,4 @@
-import { ActualMealRecord, AuthResponse, Class, Holiday, MealRecord, User } from '../types';
+import { ActualMealRecord, AuditLogEntry, AuthResponse, Class, DailyStatResponse, ClassStatItem, MonthlySummary, ComparisonResponse, Holiday, MealRecord, User } from '../types';
 
 const API_BASE = process.env.REACT_APP_API_BASE || (typeof window !== 'undefined' && window.location.port === '3000' ? 'http://localhost:4000' : '');
 
@@ -261,10 +261,189 @@ export const api = {
     return html;
   },
 
+  fetchAudit: async (params: {
+    limit?: number;
+    offset?: number;
+    fromDate?: string;
+    toDate?: string;
+    userId?: number;
+    classId?: number;
+    recordId?: number;
+  } = {}): Promise<AuditLogEntry[]> => {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.offset !== undefined) query.set('offset', String(params.offset));
+    if (params.fromDate) query.set('fromDate', params.fromDate);
+    if (params.toDate) query.set('toDate', params.toDate);
+    if (params.userId !== undefined) query.set('userId', String(params.userId));
+    if (params.classId !== undefined) query.set('classId', String(params.classId));
+    if (params.recordId !== undefined) query.set('recordId', String(params.recordId));
+
+    const response = await request(`/api/audit?${query.toString()}`);
+    const backendRows = (await response.json()) as Array<{
+      id: number;
+      user_id: number;
+      user_name: string;
+      action: string;
+      table_name: string;
+      record_id: number;
+      old_values: Record<string, any> | null;
+      new_values: Record<string, any>;
+      created_at: string;
+    }>;
+
+    return backendRows.map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      userName: row.user_name,
+      action: row.action,
+      tableName: row.table_name,
+      recordId: row.record_id,
+      oldValues: row.old_values,
+      newValues: row.new_values,
+      createdAt: row.created_at,
+    }));
+  },
+
+  getDailyStatistics: async (classId: number | undefined, month: number, year: number): Promise<DailyStatResponse> => {
+    const query = new URLSearchParams();
+    if (classId !== undefined) query.set('classId', String(classId));
+    query.set('month', String(month).padStart(2, '0'));
+    query.set('year', String(year));
+    const response = await request(`/api/statistics/daily?${query.toString()}`);
+    return response.json();
+  },
+
+  getClassStatistics: async (month: number, year: number, type: 'breakfast' | 'lunch'): Promise<ClassStatItem[]> => {
+    const query = new URLSearchParams();
+    query.set('month', String(month).padStart(2, '0'));
+    query.set('year', String(year));
+    query.set('type', type);
+    const response = await request(`/api/statistics/classes?${query.toString()}`);
+    return response.json();
+  },
+
+  getMonthlySummary: async (month: number, year: number): Promise<MonthlySummary> => {
+    const query = new URLSearchParams();
+    query.set('month', String(month).padStart(2, '0'));
+    query.set('year', String(year));
+    const response = await request(`/api/statistics/summary?${query.toString()}`);
+    return response.json();
+  },
+
+  getComparison: async (month: number, year: number, prevMonth: number, prevYear: number): Promise<ComparisonResponse> => {
+    const query = new URLSearchParams();
+    query.set('month', String(month).padStart(2, '0'));
+    query.set('year', String(year));
+    query.set('prevMonth', String(prevMonth).padStart(2, '0'));
+    query.set('prevYear', String(prevYear));
+    const response = await request(`/api/statistics/comparison?${query.toString()}`);
+    return response.json();
+  },
+
   saveHoliday: async (date: string, is_working: boolean): Promise<Holiday> => {
     const response = await request('/api/holidays', {
       method: 'POST',
       body: JSON.stringify({ date, is_working }),
+    });
+    return response.json();
+  },
+
+  fetchNotifications: async (params: {
+    limit?: number;
+    offset?: number;
+    unreadOnly?: boolean;
+  } = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.offset !== undefined) query.set('offset', String(params.offset));
+    if (params.unreadOnly) query.set('unreadOnly', '1');
+
+    const response = await request(`/api/notifications?${query.toString()}`);
+    const data = await response.json();
+    
+    return {
+      notifications: data.notifications.map((n: any) => ({
+        id: n.id,
+        userId: n.user_id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        isRead: n.is_read,
+        link: n.link,
+        emailSent: n.email_sent,
+        createdAt: n.created_at,
+      })),
+      total: data.total,
+      limit: data.limit,
+      offset: data.offset,
+    };
+  },
+
+  fetchNotificationsForManager: async (params: {
+    limit?: number;
+    offset?: number;
+    type?: string;
+    fromDate?: string;
+    toDate?: string;
+    userId?: number;
+    unreadOnly?: boolean;
+  } = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.offset !== undefined) query.set('offset', String(params.offset));
+    if (params.type) query.set('type', params.type);
+    if (params.fromDate) query.set('fromDate', params.fromDate);
+    if (params.toDate) query.set('toDate', params.toDate);
+    if (params.userId !== undefined) query.set('userId', String(params.userId));
+    if (params.unreadOnly) query.set('unreadOnly', '1');
+
+    const response = await request(`/api/notifications?${query.toString()}`);
+    const data = await response.json();
+    
+    return {
+      notifications: data.notifications.map((n: any) => ({
+        id: n.id,
+        userId: n.user_id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        isRead: n.is_read,
+        link: n.link,
+        emailSent: n.email_sent,
+        createdAt: n.created_at,
+      })),
+      total: data.total,
+      limit: data.limit,
+      offset: data.offset,
+    };
+  },
+
+  markNotificationRead: async (id: number): Promise<void> => {
+    await request(`/api/notifications/${id}/read`, { method: 'PUT' });
+  },
+
+  markAllNotificationsRead: async (): Promise<void> => {
+    await request('/api/notifications/read-all', { method: 'PUT' });
+  },
+
+  sendTestNotification: async (data: {
+    userId: number;
+    title: string;
+    message: string;
+    link?: string;
+  }): Promise<{ success: boolean; notificationId?: number; email?: any }> => {
+    const response = await request('/api/notifications/test', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+
+  checkReminder: async (): Promise<{ reminderSent: boolean; message?: string }> => {
+    const response = await request('/api/notifications/check-reminder', {
+      method: 'POST',
+      body: JSON.stringify({}),
     });
     return response.json();
   },
