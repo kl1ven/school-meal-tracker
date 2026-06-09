@@ -116,20 +116,40 @@ npm run dev
 ## 📁 Структура проекта
 
 school-meal-tracker/
-├── public/              # Статика (favicon, манифест)
-├── server/
-│   ├── routes/          # API-маршруты (auth, classes, records, notifications, audit, export, statistics, users, holidays)
-│   ├── db.js            # Инициализация SQLite, миграции
-│   └── index.js         # Точка входа backend (Express)
-├── src/
-│   ├── components/      # React-компоненты (включая NotificationBell, NotificationList, AnalyticsDashboard, AuditLog, ClassOrderManager и др.)
-│   ├── context/         # AuthContext (JWT, роли)
-│   ├── services/        # api.ts – клиент для бэкенда
-│   ├── types/           # TypeScript-типы
-│   ├── utils/           # excelExport.ts (ExcelJS), printUtils.ts (печать)
-│   ├── App.tsx          # Маршрутизация и защита роутов
-│   └── index.tsx
-├── .env                 # Переменные окружения (необязательно)
-├── package.json
-├── README.md
-└── tsconfig.json
+├── 📂 public/ # Статика (favicon, манифест, robots.txt)
+├── 📂 server/
+│ ├── 📂 routes/ # API-маршруты
+│ │ ├── auth.js # аутентификация (JWT)
+│ │ ├── classes.js # управление классами
+│ │ ├── records.js # заявки на питание
+│ │ ├── notifications.js # уведомления
+│ │ ├── audit.js # журнал изменений
+│ │ ├── export.js # экспорт в Excel
+│ │ ├── statistics.js # аналитика
+│ │ ├── users.js # пользователи
+│ │ └── holidays.js # праздничные дни
+│ ├── db.js # инициализация SQLite, миграции
+│ └── index.js # точка входа backend (Express)
+├── 📂 src/
+│ ├── 📂 components/ # React-компоненты
+│ │ ├── NotificationBell.tsx # колокольчик уведомлений
+│ │ ├── NotificationList.tsx # страница уведомлений
+│ │ ├── AnalyticsDashboard.tsx # аналитика (графики)
+│ │ ├── AuditLog.tsx # журнал изменений
+│ │ ├── ClassOrderManager.tsx # сортировка классов
+│ │ ├── ManagerDashboard.tsx # панель менеджера
+│ │ ├── TeacherDashboard.tsx # панель учителя
+│ │ ├── CanteenDashboard.tsx # панель столовой
+│ │ └── ... # остальные компоненты
+│ ├── 📂 context/ # AuthContext (JWT, роли)
+│ ├── 📂 services/ # api.ts – клиент для бэкенда
+│ ├── 📂 types/ # TypeScript-типы
+│ ├── 📂 utils/ # утилиты
+│ │ ├── excelExport.ts # генерация табеля (ExcelJS)
+│ │ └── printUtils.ts # печатная форма
+│ ├── App.tsx # маршрутизация и защита роутов
+│ └── index.tsx
+├── 📄 .env # переменные окружения (необязательно)
+├── 📄 package.json
+├── 📄 README.md
+└── 📄 tsconfig.json
