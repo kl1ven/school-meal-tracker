@@ -14,7 +14,7 @@
 
 ## ✨ Краткое описание
 
-School Meal Tracker — практичное веб-приложение для учёта горячего питания в школе-интернате. Автоматизирует сбор заявок, учёт фактической выдачи и формирование табелей с аналитикой.
+School Meal Tracker — современное веб-приложение для учёта горячего питания в школе-интернате. Полностью автоматизирует сбор заявок, учёт фактической выдачи, формирование табелей в Excel, а также предоставляет аналитику, журнал изменений и систему внутренних уведомлений.
 
 ---
 
@@ -115,7 +115,21 @@ npm run dev
 
 ## 📁 Структура проекта
 
-- src — frontend (React + TypeScript)  
-- server — backend (Express + SQLite)  
-- screenshots — интерфейсные скриншоты (пути в README)  
-- package.json — npm-скрипты и зависимости
+school-meal-tracker/
+├── public/              # Статика (favicon, манифест)
+├── server/
+│   ├── routes/          # API-маршруты (auth, classes, records, notifications, audit, export, statistics, users, holidays)
+│   ├── db.js            # Инициализация SQLite, миграции
+│   └── index.js         # Точка входа backend (Express)
+├── src/
+│   ├── components/      # React-компоненты (включая NotificationBell, NotificationList, AnalyticsDashboard, AuditLog, ClassOrderManager и др.)
+│   ├── context/         # AuthContext (JWT, роли)
+│   ├── services/        # api.ts – клиент для бэкенда
+│   ├── types/           # TypeScript-типы
+│   ├── utils/           # excelExport.ts (ExcelJS), printUtils.ts (печать)
+│   ├── App.tsx          # Маршрутизация и защита роутов
+│   └── index.tsx
+├── .env                 # Переменные окружения (необязательно)
+├── package.json
+├── README.md
+└── tsconfig.json
