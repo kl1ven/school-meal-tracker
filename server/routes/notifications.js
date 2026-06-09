@@ -187,8 +187,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     await runAsync('DELETE FROM notifications WHERE id = ?', [id]);
 
-    console.log(`[notifications] 🗑️ Уведомление удалено: userId=${userId}, id=${id}`);
-
+    console.log(`🗑️ Уведомление ${id} удалено пользователем ${userId}`);
     res.json({ success: true, message: 'Уведомление удалено' });
   } catch (error) {
     console.error('Ошибка при удалении уведомления:', error);

@@ -18,7 +18,6 @@ const MONTHS = [
   'декабрь',
 ];
 
-// Порядок классов согласно образцу
 export const CLASS_ORDER = [
   '1-а', '1-б', '1г-доп', '1-в', '2-а', '2-б', '3-а', '3-б', '4-а', '4-б',
   '5-а', '5-б', '6-а', '6-б', '7-а', '6в/7б', '8-а', '8-б', '8-в', '7в/8г',
@@ -29,21 +28,12 @@ export const sortClasses = (classes: Class[]): Class[] => {
   return [...classes].sort((a, b) => {
     const orderA = typeof a.sort_order === 'number' ? a.sort_order : 0;
     const orderB = typeof b.sort_order === 'number' ? b.sort_order : 0;
-    if (orderA && orderB) {
-      return orderA - orderB;
-    }
-    if (orderA) {
-      return -1;
-    }
-    if (orderB) {
-      return 1;
-    }
-
+    if (orderA && orderB) return orderA - orderB;
+    if (orderA) return -1;
+    if (orderB) return 1;
     const indexA = CLASS_ORDER.indexOf(a.name);
     const indexB = CLASS_ORDER.indexOf(b.name);
-    if (indexA !== -1 && indexB !== -1) {
-      return indexA - indexB;
-    }
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
     if (indexA !== -1) return -1;
     if (indexB !== -1) return 1;
     return a.name.localeCompare(b.name, 'ru');
@@ -60,26 +50,23 @@ const getGrade = (className: string): number => {
   return match ? Number(match[1]) : 0;
 };
 
-const isWeekend = (date: Date): boolean => {
-  const day = date.getDay();
-  return day === 0 || day === 6;
+const isWeekendByDateKey = (dateKey: string): boolean => {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = date.getUTCDay();
+  return dayOfWeek === 0 || dayOfWeek === 6;
 };
 
 const getValueForCell = (
   record: MealRecord | undefined,
   type: 'breakfast' | 'lunch',
-  date: Date,
+  dateKey: string,
   holidays: string[],
 ): number | string => {
-  const dateKey = formatDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
-  if (isWeekend(date) || holidays.includes(dateKey)) {
+  if (isWeekendByDateKey(dateKey) || holidays.includes(dateKey)) {
     return 'в';
   }
-
-  if (!record) {
-    return 0;
-  }
-
+  if (!record) return 0;
   return type === 'breakfast' ? record.breakfast_count : record.lunch_count;
 };
 
@@ -94,7 +81,6 @@ export async function exportToExcel(month: number, year: number): Promise<void> 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'School Meal Tracker ExcelJS';
     workbook.lastModifiedBy = 'School Meal Tracker ExcelJS';
-    console.info('[Excel export] Using ExcelJS generator from src/utils/excelExport.ts');
     const worksheet = workbook.addWorksheet('Питание');
 
     const INDEX_COL = 1;
@@ -103,7 +89,7 @@ export async function exportToExcel(month: number, year: number): Promise<void> 
     const FIRST_DAY_COL = 4;
     const TOTAL_COL = FIRST_DAY_COL + dayCount;
     const NOTE_COL = TOTAL_COL + 1;
-    const HEADER_ROW = 7;
+    const HEADER_ROW = 7; // заголовки теперь в строке 7 (было 8)
 
     worksheet.columns = [
       { width: 4 },
@@ -111,34 +97,26 @@ export async function exportToExcel(month: number, year: number): Promise<void> 
       { width: 11 },
       ...Array.from({ length: dayCount }, () => ({ width: 5 })),
       { width: 14 },
-      { width: 12 },
+      { width: 26.57 },
     ];
 
     const recordsByClassAndDate: Record<number, Record<string, MealRecord>> = {};
-    classes.forEach((item) => {
-      recordsByClassAndDate[item.id] = {};
-    });
+    classes.forEach((c) => { recordsByClassAndDate[c.id] = {}; });
     records.forEach((record) => {
-      if (!recordsByClassAndDate[record.class_id]) {
-        recordsByClassAndDate[record.class_id] = {};
-      }
+      if (!recordsByClassAndDate[record.class_id]) recordsByClassAndDate[record.class_id] = {};
       recordsByClassAndDate[record.class_id][record.date] = record;
     });
 
-    const classes1to4 = classes.filter((item) => {
-      const grade = getGrade(item.name);
-      return grade >= 1 && grade <= 4;
-    });
-    const classes5to11 = classes.filter((item) => getGrade(item.name) >= 5);
+    const classes1to4 = classes.filter((c) => getGrade(c.name) >= 1 && getGrade(c.name) <= 4);
+    const classes5to11 = classes.filter((c) => getGrade(c.name) >= 5);
 
     const groupTotals: Record<'1-4' | '5-11', { breakfast: number[]; lunch: number[] }> = {
       '1-4': { breakfast: Array(dayCount).fill(0), lunch: Array(dayCount).fill(0) },
       '5-11': { breakfast: Array(dayCount).fill(0), lunch: Array(dayCount).fill(0) },
     };
 
-    const makeRowValues = (): Array<string | number> => Array.from({ length: NOTE_COL }, () => '');
-
-    const setRowValues = (rowNumber: number, values: Array<string | number>) => {
+    const makeEmptyRow = (): Array<string | number | null> => Array.from({ length: NOTE_COL }, () => null);
+    const setRowValues = (rowNumber: number, values: Array<string | number | null>) => {
       const row = worksheet.getRow(rowNumber);
       values.forEach((value, index) => {
         row.getCell(index + 1).value = value;
@@ -146,204 +124,248 @@ export async function exportToExcel(month: number, year: number): Promise<void> 
       return row;
     };
 
-    setRowValues(1, (() => {
-      const row = makeRowValues();
-      row[0] = 'УТВЕРЖДАЮ:';
-      return row;
-    })());
-    worksheet.mergeCells(1, INDEX_COL, 1, NOTE_COL);
+// Одна пустая строка
+    setRowValues(1, makeEmptyRow());
 
-    setRowValues(2, (() => {
-      const row = makeRowValues();
-      row[NOTE_COL - 1] = 'директор МОУ СКШИ г. Нерюнгри';
-      return row;
-    })());
+    // Строка 2: УТВЕРЖДАЮ: в последней колонке (NOTE_COL)
+    const approveRow = makeEmptyRow();
+    approveRow[NOTE_COL - 1] = 'УТВЕРЖДАЮ:';
+    setRowValues(2, approveRow);
+    worksheet.getRow(2).getCell(NOTE_COL).alignment = { horizontal: 'right', vertical: 'middle' };
+    worksheet.getRow(2).getCell(NOTE_COL).font = { name: 'Times New Roman', size: 10 };
 
-    setRowValues(3, (() => {
-      const row = makeRowValues();
-      row[NOTE_COL - 1] = '_________________Семенкова Н.В.';
-      return row;
-    })());
+    // Строка 3: директор в последней колонке
+    const directorRow = makeEmptyRow();
+    directorRow[NOTE_COL - 1] = 'директор МОУ СКШИ г. Нерюнгри';
+    setRowValues(3, directorRow);
+    worksheet.getRow(3).getCell(NOTE_COL).alignment = { horizontal: 'right', vertical: 'middle' };
+    worksheet.getRow(3).getCell(NOTE_COL).font = { name: 'Times New Roman', size: 10 };
 
-    setRowValues(4, (() => {
-      const row = makeRowValues();
-      row[0] = `Табель учета питания за ${MONTHS[month]} ${year} г.`;
-      return row;
-    })());
-    worksheet.mergeCells(4, INDEX_COL, 4, NOTE_COL);
+    // Строка 4: подпись в последней колонке
+    const signRow = makeEmptyRow();
+    signRow[NOTE_COL - 1] = '_________________Семенкова Н.В.';
+    setRowValues(4, signRow);
+    worksheet.getRow(4).getCell(NOTE_COL).alignment = { horizontal: 'right', vertical: 'middle' };
+    worksheet.getRow(4).getCell(NOTE_COL).font = { name: 'Times New Roman', size: 10 };
 
-    setRowValues(5, makeRowValues());
-    setRowValues(6, makeRowValues());
+    // Строка 5: название табеля (объединено по всей ширине)
+    const titleRow = makeEmptyRow();
+    titleRow[INDEX_COL - 1] = `Табель учета питания за ${MONTHS[month]} ${year} г.`;
+    setRowValues(5, titleRow);
+    worksheet.mergeCells(5, INDEX_COL, 5, NOTE_COL);
+    worksheet.getRow(5).getCell(INDEX_COL).alignment = { horizontal: 'center', vertical: 'middle' };
+    worksheet.getRow(5).getCell(INDEX_COL).font = { name: 'Times New Roman', size: 10 };
 
-    const weekendColumnIndexes = new Set<number>();
+    // Пустые строки 6 и 7
+    setRowValues(6, makeEmptyRow());
+    setRowValues(7, makeEmptyRow());
 
-    const headerValues = makeRowValues();
+    // Заголовки (строка 7, было 8)
+    const headerValues = makeEmptyRow();
     headerValues[INDEX_COL - 1] = '№';
     headerValues[NAME_COL - 1] = 'Ф.И.О.';
-    for (let day = 1; day <= dayCount; day += 1) {
+    for (let day = 1; day <= dayCount; day++) {
       headerValues[FIRST_DAY_COL + day - 2] = day;
-      const currentDate = new Date(year, month - 1, day);
-      const dateKey = formatDate(year, month, day);
-      if (isWeekend(currentDate) || holidays.includes(dateKey)) {
-        weekendColumnIndexes.add(FIRST_DAY_COL + day - 1);
-      }
     }
     headerValues[TOTAL_COL - 1] = 'Кол-во приемов';
     headerValues[NOTE_COL - 1] = 'примечание';
     setRowValues(HEADER_ROW, headerValues);
-
+    for (let col = INDEX_COL; col <= NOTE_COL; col++) {
+      const cell = worksheet.getRow(HEADER_ROW).getCell(col);
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      if (col >= FIRST_DAY_COL && col < TOTAL_COL) {
+        cell.font = { name: 'Calibri', size: 10, bold: true };
+      } else {
+        cell.font = { name: 'Times New Roman', size: 10, bold: true };
+      }
+    }
+    worksheet.getRow(HEADER_ROW).getCell(NOTE_COL).font = { name: 'Calibri', size: 11, bold: true };
+    
+    
     let currentRow = HEADER_ROW + 1;
     const summaryRows = new Set<number>();
+    const weekendColumnIndexes = new Set<number>();
+
+    const isHolidayOrWeekend = Array.from({ length: dayCount }, (_, i) => {
+      const dateKey = formatDate(year, month, i + 1);
+      return isWeekendByDateKey(dateKey) || holidays.includes(dateKey);
+    });
+
+    for (let day = 1; day <= dayCount; day++) {
+      if (isHolidayOrWeekend[day - 1]) {
+        weekendColumnIndexes.add(FIRST_DAY_COL + day - 1);
+      }
+    }
 
     const addClassRows = (classItem: Class, classNumber: number) => {
-      const breakfastValues = makeRowValues();
-      const lunchValues = makeRowValues();
+      const breakfastValues = makeEmptyRow();
+      const lunchValues = makeEmptyRow();
 
       breakfastValues[INDEX_COL - 1] = classNumber;
-      breakfastValues[NAME_COL - 1] = classItem.name;
+      breakfastValues[NAME_COL - 1] = `${classItem.name} класс`;
       breakfastValues[MEAL_COL - 1] = 'завтрак';
       lunchValues[MEAL_COL - 1] = 'обед';
 
-      for (let day = 1; day <= dayCount; day += 1) {
-        const currentDate = new Date(year, month - 1, day);
+      for (let day = 1; day <= dayCount; day++) {
         const dateKey = formatDate(year, month, day);
         const record = recordsByClassAndDate[classItem.id]?.[dateKey];
-        const breakfastValue = getValueForCell(record, 'breakfast', currentDate, holidays);
-        const lunchValue = getValueForCell(record, 'lunch', currentDate, holidays);
+        const breakfastVal = getValueForCell(record, 'breakfast', dateKey, holidays);
+        const lunchVal = getValueForCell(record, 'lunch', dateKey, holidays);
 
-        breakfastValues[FIRST_DAY_COL + day - 2] = breakfastValue;
-        lunchValues[FIRST_DAY_COL + day - 2] = lunchValue;
+        breakfastValues[FIRST_DAY_COL + day - 2] = breakfastVal;
+        lunchValues[FIRST_DAY_COL + day - 2] = lunchVal;
 
-        const groupKey: '1-4' | '5-11' = getGrade(classItem.name) <= 4 ? '1-4' : '5-11';
-        if (typeof breakfastValue === 'number') groupTotals[groupKey].breakfast[day - 1] += breakfastValue;
-        if (typeof lunchValue === 'number') groupTotals[groupKey].lunch[day - 1] += lunchValue;
+        const groupKey = getGrade(classItem.name) <= 4 ? '1-4' : '5-11';
+        if (typeof breakfastVal === 'number') groupTotals[groupKey].breakfast[day - 1] += breakfastVal;
+        if (typeof lunchVal === 'number') groupTotals[groupKey].lunch[day - 1] += lunchVal;
       }
 
-      breakfastValues[TOTAL_COL - 1] = breakfastValues.slice(FIRST_DAY_COL - 1, TOTAL_COL - 1).reduce<number>((sum, value) => sum + (typeof value === 'number' ? value : 0), 0);
-      lunchValues[TOTAL_COL - 1] = lunchValues.slice(FIRST_DAY_COL - 1, TOTAL_COL - 1).reduce<number>((sum, value) => sum + (typeof value === 'number' ? value : 0), 0);
+      breakfastValues[TOTAL_COL - 1] = breakfastValues
+        .slice(FIRST_DAY_COL - 1, TOTAL_COL - 1)
+        .reduce<number>((sum, v) => sum + (typeof v === 'number' ? v : 0), 0);
+      lunchValues[TOTAL_COL - 1] = lunchValues
+        .slice(FIRST_DAY_COL - 1, TOTAL_COL - 1)
+        .reduce<number>((sum, v) => sum + (typeof v === 'number' ? v : 0), 0);
 
       setRowValues(currentRow, breakfastValues);
       setRowValues(currentRow + 1, lunchValues);
       worksheet.mergeCells(currentRow, INDEX_COL, currentRow + 1, INDEX_COL);
       worksheet.mergeCells(currentRow, NAME_COL, currentRow + 1, NAME_COL);
+
+      for (let row = currentRow; row <= currentRow + 1; row++) {
+        for (let col = INDEX_COL; col <= NOTE_COL; col++) {
+          const cell = worksheet.getRow(row).getCell(col);
+          const val = cell.value;
+          if (typeof val === 'number') {
+            cell.font = { name: 'Calibri', size: 10 };
+          } else {
+            cell.font = { name: 'Times New Roman', size: 10 };
+          }
+          // внутри цикла по col
+          if (col === INDEX_COL || col === NAME_COL) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          }
+        }
+      }
       currentRow += 2;
     };
 
     const addSummaryRows = (title: string, breakfastTotals: number[], lunchTotals: number[], note = '') => {
-      const breakfastValues = makeRowValues();
-      const lunchValues = makeRowValues();
+      const breakfastValues = makeEmptyRow();
+      const lunchValues = makeEmptyRow();
 
       breakfastValues[NAME_COL - 1] = title;
       breakfastValues[MEAL_COL - 1] = 'завтрак';
       lunchValues[MEAL_COL - 1] = 'обед';
 
-      for (let i = 0; i < dayCount; i += 1) {
-        breakfastValues[FIRST_DAY_COL + i - 1] = breakfastTotals[i] ?? 0;
-        lunchValues[FIRST_DAY_COL + i - 1] = lunchTotals[i] ?? 0;
+      for (let i = 0; i < dayCount; i++) {
+        if (isHolidayOrWeekend[i]) {
+          breakfastValues[FIRST_DAY_COL + i - 1] = 'в';
+          lunchValues[FIRST_DAY_COL + i - 1] = 'в';
+        } else {
+          breakfastValues[FIRST_DAY_COL + i - 1] = breakfastTotals[i] ?? 0;
+          lunchValues[FIRST_DAY_COL + i - 1] = lunchTotals[i] ?? 0;
+        }
       }
 
-      breakfastValues[TOTAL_COL - 1] = breakfastTotals.reduce((sum, value) => sum + value, 0);
-      lunchValues[TOTAL_COL - 1] = lunchTotals.reduce((sum, value) => sum + value, 0);
+      breakfastValues[TOTAL_COL - 1] = breakfastTotals.reduce((s, v) => s + v, 0);
+      lunchValues[TOTAL_COL - 1] = lunchTotals.reduce((s, v) => s + v, 0);
       breakfastValues[NOTE_COL - 1] = note;
 
       setRowValues(currentRow, breakfastValues);
       setRowValues(currentRow + 1, lunchValues);
+
+      for (let row = currentRow; row <= currentRow + 1; row++) {
+        for (let col = INDEX_COL; col <= NOTE_COL; col++) {
+          const cell = worksheet.getRow(row).getCell(col);
+          const val = cell.value;
+          if (col === INDEX_COL || col === NAME_COL || col === MEAL_COL) {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          }
+          if (typeof val === 'number') {
+            cell.font = { name: 'Calibri', size: 10 };
+          } else {
+            cell.font = { name: 'Times New Roman', size: 10 };
+          }
+        }
+      }
+
       summaryRows.add(currentRow);
       summaryRows.add(currentRow + 1);
       currentRow += 2;
     };
 
     let classNumber = 1;
-    classes1to4.forEach((classItem) => {
-      addClassRows(classItem, classNumber);
-      classNumber += 1;
-    });
-
+    classes1to4.forEach((c) => addClassRows(c, classNumber++));
     addSummaryRows('Всего 1-4 классы', groupTotals['1-4'].breakfast, groupTotals['1-4'].lunch, 'Завтраков 1-4 классов');
 
-    classes5to11.forEach((classItem) => {
-      addClassRows(classItem, classNumber);
-      classNumber += 1;
-    });
-
+    classes5to11.forEach((c) => addClassRows(c, classNumber++));
     addSummaryRows('Всего 5-11 классы', groupTotals['5-11'].breakfast, groupTotals['5-11'].lunch);
 
-    const schoolBreakfastTotals = groupTotals['1-4'].breakfast.map((value, index) => value + groupTotals['5-11'].breakfast[index]);
-    const schoolLunchTotals = groupTotals['1-4'].lunch.map((value, index) => value + groupTotals['5-11'].lunch[index]);
+    const schoolBreakfastTotals = groupTotals['1-4'].breakfast.map((v, i) => v + groupTotals['5-11'].breakfast[i]);
+    const schoolLunchTotals = groupTotals['1-4'].lunch.map((v, i) => v + groupTotals['5-11'].lunch[i]);
     addSummaryRows('Всего по школе', schoolBreakfastTotals, schoolLunchTotals);
 
-    const footerRowNumber = currentRow + 1;
-    setRowValues(currentRow, makeRowValues());
-    const footerValues = makeRowValues();
-    footerValues[0] = 'Табель составила:  Каткевич Е.А.';
-    setRowValues(footerRowNumber, footerValues);
+    const lastDataRow = currentRow - 1;
+
+    // Пустая строка после таблицы
+    setRowValues(currentRow, makeEmptyRow());
+    currentRow++;
+
+    // Подпись "Табель составила: ..."
+    const footerRow = makeEmptyRow();
+    footerRow[MEAL_COL - 1] = 'Табель составила:                        Каткевич Е.А.';
+    setRowValues(currentRow, footerRow);
+    worksheet.mergeCells(currentRow, MEAL_COL, currentRow, NOTE_COL);
+    for (let col = MEAL_COL; col <= NOTE_COL; col++) {
+      const cell = worksheet.getRow(currentRow).getCell(col);
+      cell.border = { top: { style: 'thin', color: { argb: 'FF000000' } } };
+      cell.font = { name: 'Times New Roman', size: 10 };
+    }
+    const footerRowNumber = currentRow;
 
     const thinBorder = { style: 'thin' as const, color: { argb: 'FF000000' } };
-    const thickBorder = { style: 'thick' as const, color: { argb: 'FF000000' } };
-    const weekendFill = {
-      type: 'pattern' as const,
-      pattern: 'solid' as const,
-      fgColor: { argb: 'FFFFF2CC' },
-    };
-    const tableStartRow = HEADER_ROW;
-    const tableEndRow = currentRow - 1;
+    const weekendFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFFFF00' } };
+    const summaryFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE6B8B7' } };
 
-    for (let rowNumber = 1; rowNumber <= footerRowNumber; rowNumber += 1) {
+    const tableStartRow = HEADER_ROW;
+    const tableEndRow = lastDataRow;
+
+    for (let rowNumber = 1; rowNumber <= footerRowNumber; rowNumber++) {
       const row = worksheet.getRow(rowNumber);
-      for (let colNumber = INDEX_COL; colNumber <= NOTE_COL; colNumber += 1) {
+      for (let colNumber = INDEX_COL; colNumber <= NOTE_COL; colNumber++) {
         const cell = row.getCell(colNumber);
         const value = cell.value;
 
         if (rowNumber >= tableStartRow && rowNumber <= tableEndRow) {
           cell.border = {
-            top: rowNumber === tableStartRow ? thickBorder : thinBorder,
-            bottom: rowNumber === tableEndRow ? thickBorder : thinBorder,
-            left: colNumber === INDEX_COL ? thickBorder : thinBorder,
-            right: colNumber === NOTE_COL ? thickBorder : thinBorder,
+            top: rowNumber === tableStartRow ? thinBorder : thinBorder,
+            bottom: rowNumber === tableEndRow ? thinBorder : thinBorder,
+            left: colNumber === INDEX_COL ? thinBorder : thinBorder,
+            right: colNumber === NOTE_COL ? thinBorder : thinBorder,
           };
         }
 
-        if (rowNumber === 1) {
-          cell.font = { bold: true };
-          cell.alignment = { horizontal: 'left', vertical: 'middle' };
-        } else if (rowNumber === 2 || rowNumber === 3) {
-          cell.alignment = { horizontal: colNumber === NOTE_COL ? 'right' : 'left', vertical: 'middle' };
-        } else if (rowNumber === 4) {
-          cell.font = { bold: true, size: 12 };
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        } else if (rowNumber === HEADER_ROW) {
-          cell.font = { bold: true };
-          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-        } else if (rowNumber === footerRowNumber) {
-          cell.alignment = { horizontal: 'left', vertical: 'middle' };
-        } else if (rowNumber >= tableStartRow && rowNumber <= tableEndRow) {
-          if (weekendColumnIndexes.has(colNumber) && colNumber >= FIRST_DAY_COL && colNumber < TOTAL_COL) {
-            cell.fill = weekendFill;
-          } else if (summaryRows.has(rowNumber)) {
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFF2F2F2' },
-            };
-          }
-
-          const isNumber = typeof value === 'number';
-          const isWeekendMark = value === 'в';
-          const isCenteredColumn = colNumber === INDEX_COL || colNumber === NAME_COL || colNumber === MEAL_COL || (colNumber >= FIRST_DAY_COL && colNumber <= TOTAL_COL);
-
-          if (isNumber || isWeekendMark || isCenteredColumn) {
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          } else {
-            cell.alignment = { horizontal: 'left', vertical: 'middle' };
-          }
+        if (value === 'в') {
+          cell.fill = weekendFill;
+        }
+        else if (summaryRows.has(rowNumber)) {
+          cell.fill = summaryFill;
         }
       }
     }
 
+    // Жёлтая заливка для ячеек дней, которые являются выходными или праздниками
+    for (let day = 1; day <= dayCount; day++) {
+      if (isHolidayOrWeekend[day - 1]) {
+        const colNum = FIRST_DAY_COL + day - 1;
+        const cell = worksheet.getRow(HEADER_ROW).getCell(colNum);
+        cell.fill = weekendFill;
+      }
+    }
+
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.href = url;

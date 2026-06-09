@@ -65,6 +65,15 @@ const NotificationList: React.FC = () => {
     );
   };
 
+  useEffect(() => {
+  const handleUpdate = () => {
+    console.log('🔄 Обновляем список уведомлений после удаления');
+    fetchNotifications(currentPage);  // перезагружаем текущую страницу
+  };
+  window.addEventListener('notifications-updated', handleUpdate);
+  return () => window.removeEventListener('notifications-updated', handleUpdate);
+  }, [fetchNotifications, currentPage]);
+
   const handleMarkAllAsRead = async () => {
     try {
       await api.markAllNotificationsRead();

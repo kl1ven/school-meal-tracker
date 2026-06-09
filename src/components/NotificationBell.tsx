@@ -4,7 +4,6 @@ import { formatNeryungriDate } from '../utils/dateHelpers';
 import NotificationModal from './NotificationModal';
 import './NotificationBell.css';
 
-// Type definition for Notification
 interface INotification {
   id: number;
   userId: number;
@@ -48,14 +47,9 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
     }
   };
 
-  // Set up auto-update polling (every 30 seconds)
   useEffect(() => {
     console.log('🔔 NotificationBell смонтирован. Запуск полинга уведомлений...');
-    
-    // Initial fetch
     fetchNotifications();
-    
-    // Set up polling interval (every 30 seconds)
     intervalRef.current = setInterval(() => {
       console.log('⏰ Проверка уведомлений (автопрос каждые 30 сек)...');
       fetchNotifications();
@@ -63,9 +57,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
     
     return () => {
       console.log('🔔 NotificationBell демонтирован. Остановка полинга.');
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
@@ -75,14 +67,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
         setIsOpen(false);
       }
     };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
   const handleNotificationClick = (notification: INotification) => {
@@ -90,21 +76,14 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
   };
 
   const handleMarkReadFromModal = (id: number) => {
-    // Update the notification in the list
-    setNotifications(
-      notifications.map((n) =>
-        n.id === id ? { ...n, isRead: 1 } : n
-      )
-    );
+    setNotifications(notifications.map(n => n.id === id ? { ...n, isRead: 1 } : n));
     setUnreadCount(Math.max(0, unreadCount - 1));
   };
 
   const handleMarkAllAsRead = async () => {
     try {
       await api.markAllNotificationsRead();
-      setNotifications(
-        notifications.map((n) => ({ ...n, isRead: 1 }))
-      );
+      setNotifications(notifications.map(n => ({ ...n, isRead: 1 })));
       setUnreadCount(0);
     } catch (error) {
       console.error('Error marking all as read:', error);
@@ -112,21 +91,18 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
   };
 
   const handleDeleteFromBell = async (id: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering notification click
-
+    e.stopPropagation();
+    if (!window.confirm('Удалить уведомление?')) return;
     try {
       setIsDeleting(id);
       await api.deleteNotification(id);
-
-      // Remove notification from list
-      setNotifications(notifications.filter((n) => n.id !== id));
-
-      // Update unread count if deleted notification was unread
-      const deletedNotif = notifications.find((n) => n.id === id);
+      const deletedNotif = notifications.find(n => n.id === id);
+      setNotifications(notifications.filter(n => n.id !== id));
       if (deletedNotif && !deletedNotif.isRead) {
         setUnreadCount(Math.max(0, unreadCount - 1));
       }
-
+      // Сигнал для обновления страницы уведомлений (если открыта)
+      window.dispatchEvent(new CustomEvent('notifications-updated'));
       console.log(`✅ Уведомление ${id} удалено из колокольчика`);
     } catch (error) {
       console.error('Error deleting notification:', error);
@@ -153,19 +129,12 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
   const handleBellClick = () => {
     console.log('🔔 Клик на колокольчик. Загрузка свежих уведомлений...');
     setIsOpen(!isOpen);
-    // Immediately fetch fresh notifications when bell is clicked
-    if (!isOpen) {
-      fetchNotifications();
-    }
+    if (!isOpen) fetchNotifications();
   };
 
   return (
     <div className="notification-bell" ref={dropdownRef}>
-      <button
-        className="bell-button"
-        onClick={handleBellClick}
-        title="Уведомления"
-      >
+      <button className="bell-button" onClick={handleBellClick} title="Уведомления">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
           <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -178,15 +147,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
           <div className="notification-header">
             <h3>Уведомления</h3>
             {unreadCount > 0 && (
-              <button
-                className="mark-all-btn"
-                onClick={handleMarkAllAsRead}
-              >
+              <button className="mark-all-btn" onClick={handleMarkAllAsRead}>
                 Прочитать все
               </button>
             )}
           </div>
-
           <div className="notification-list">
             {isLoading ? (
               <div className="notification-loading">Загрузка...</div>
@@ -204,9 +169,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
                       {getTypeLabel(notification.type)}
                     </div>
                     <div className="notification-title">{notification.title}</div>
-                    <div className="notification-message">
-                      {notification.message}
-                    </div>
+                    <div className="notification-message">{notification.message}</div>
                     <div className="notification-date">
                       {formatNeryungriDate(notification.createdAt)}
                     </div>
@@ -221,14 +184,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
                       {isDeleting === notification.id ? '⏳' : '🗑️'}
                     </button>
                   </div>
-                  {!notification.isRead && (
-                    <div className="notification-unread-dot"></div>
-                  )}
+                  {!notification.isRead && <div className="notification-unread-dot"></div>}
                 </div>
               ))
             )}
           </div>
-
           {onViewAll && (
             <div className="notification-footer">
               <button
